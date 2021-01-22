@@ -28,10 +28,10 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QMainWindow, QAbstractItemView, QTableWidget, \
     QTableWidgetItem, QDialog, QProgressBar, QFileDialog
 
-from ui.ui_20210118.StartScreen_v22 import Ui_MainWindow as Start_Ui
+from ui.ui_20210121.StartScreen_v30 import Ui_MainWindow as Start_Ui
 # from ui.ui_20201106.FileSelection_v18_dawn import Ui_MainWindow as File_Ui
 from ui.ui_20200906.FileSelection_v13 import Ui_MainWindow as File_Ui
-from ui.ui_20210112.SignalAnalysis_v20 import Ui_MainWindow as Signal_Ui
+from ui.ui_20210121.SignalAnalysis_v30 import Ui_MainWindow as Signal_Ui
 
 from read_data import find_polar_pair, file_to_numpy, get_iq_data, get_files, get_sample_rate, DataLabel
 from process_signal import get_settings, ProgramSettings
@@ -58,6 +58,7 @@ class StartWindow(QMainWindow, Start_Ui):
         pixmap_parse_logo = QPixmap(QImage(self.ctx.img_parse_logo()))
         pixmap_parse_logo = pixmap_parse_logo.scaled(350, 350, Qt.KeepAspectRatio)
         self.label_parselogo.setPixmap(pixmap_parse_logo)
+        self.label_parselogo.setAlignment(Qt.AlignCenter)
 
         pixmap_usc_logo = QPixmap(QImage(self.ctx.img_usc_logo()))
         pixmap_usc_logo = pixmap_usc_logo.scaled(150, 150, Qt.KeepAspectRatio)
@@ -467,17 +468,24 @@ class SignalWindow(QMainWindow, Signal_Ui):
         self.spin_x_min.setValue(msmt.freq_local_min)
         self.spin_x_max.setValue(msmt.freq_local_max)
 
-        self.spin_ymax_global.setValue(msmt.Pxx_max)
+        self.spin_ymax_global.setValue(msmt.Pxx_max_RCP)
+        self.spin_ymax_global_LCP.setValue(msmt.Pxx_LCP_at_max)
         self.spin_x_at_ymax_global.setValue(msmt.freq_at_max)
-        self.spin_bandwidth_global.setValue(msmt.bandwidth_of_max)
-        self.spin_noise_variance_global.setValue(msmt.Pxx_noise_var)
+        self.spin_bandwidth_global.setValue(msmt.bandwidth_RCP_at_max)
+        self.spin_bandwidth_global_LCP.setValue(msmt.bandwidth_LCP_at_max)
+        self.spin_noise_variance_global.setValue(msmt.Pxx_noise_var_RCP)
+        self.spin_noise_variance_global_LCP.setValue(msmt.Pxx_noise_var_LCP)
+        self.spin_delta_x_predict.setValue(msmt.delta_f_calc)
         self.spin_delta_x_predict.setValue(msmt.delta_f_calc)
 
-        self.spin_ymax_local.setValue(msmt.Pxx_local_max)
+        self.spin_ymax_local.setValue(msmt.Pxx_local_max_RCP)
+        self.spin_ymax_local_LCP.setValue(msmt.Pxx_LCP_at_local_max)
         self.spin_x_at_ymax_local.setValue(msmt.freq_at_local_max)
-        self.spin_bandwidth_local.setValue(msmt.bandwidth_local_peak)
+        self.spin_bandwidth_local.setValue(msmt.bandwidth_RCP_local_max)
+        self.spin_bandwidth_local_LCP.setValue(msmt.bandwidth_LCP_at_local_max)
         # self.spin_variance_local.setValue(msmt.Pxx_local_var)
-        self.spin_delta_y.setValue(msmt.dPxx_max)
+        self.spin_delta_y.setValue(msmt.delta_Pxx_max_RCP)
+        self.spin_delta_y_LCP.setValue(msmt.delta_Pxx_LCP)
         self.spin_delta_x_observed.setValue(msmt.delta_f_obsv)
 
     def apply_changes_plot_analysis(self):
@@ -491,9 +499,10 @@ class SignalWindow(QMainWindow, Signal_Ui):
 
         # get measurements for plot analysis, using data from RCP file
         msmt = analyze_plot(s=self.animation_widget.s,
-                            freqs=self.animation_widget.plots[self.animation_widget.frame_index][
-                                0],
+                            freqs=self.animation_widget.plots[self.animation_widget.frame_index][0],
                             Pxx=self.animation_widget.plots[self.animation_widget.frame_index][1],
+                            freqs_LCP=self.animation_widget.plots[self.animation_widget.frame_index][2],
+                            Pxx_LCP=self.animation_widget.plots[self.animation_widget.frame_index][3],
                             NdB_below=NdB_below,
                             freq_local_min=freq_local_min,
                             freq_local_max=freq_local_max)
@@ -528,7 +537,11 @@ class SignalWindow(QMainWindow, Signal_Ui):
                                 freqs=
                                 self.animation_widget.plots[self.animation_widget.frame_index][0],
                                 Pxx=self.animation_widget.plots[self.animation_widget.frame_index][
-                                    1])
+                                    1],
+                                freqs_LCP=
+                                self.animation_widget.plots[self.animation_widget.frame_index][2],
+                                Pxx_LCP=self.animation_widget.plots[self.animation_widget.frame_index][
+                                    3])
 
             self.msmt = msmt
 

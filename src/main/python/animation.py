@@ -530,7 +530,7 @@ class BSRAnimation(FigureCanvas):
                 self.signal_plot.axvline(x=self.msmt.freq_local_max, lw=0.7, color='blue',
                                          linestyle='--')
                 self.signal_plot.text(x=(((self.msmt.freq_local_max - self.msmt.freq_local_min) / 3) + self.msmt.freq_local_min),
-                                      y=self.msmt.Pxx_max * 1.3,
+                                      y=self.msmt.Pxx_max_RCP * 1.3,
                                       s='Selected Range', **font_arial, fontsize=10,
                                       horizontalalignment='center',
                                       verticalalignment='top',
@@ -538,19 +538,19 @@ class BSRAnimation(FigureCanvas):
 
                 # mark and label both peaks
                 self.signal_plot.plot([self.msmt.freq_at_max, self.msmt.freq_at_max],
-                                      [-150, self.msmt.Pxx_max],
+                                      [-150, self.msmt.Pxx_max_RCP],
                                       lw=1.4, color='black', linestyle='-', marker="D", markersize=3)
                 self.signal_plot.text(x=self.msmt.freq_at_max,
-                                      y=self.msmt.Pxx_max * 1.15,
+                                      y=self.msmt.Pxx_max_RCP * 1.15,
                                       s='global max', **font_arial, fontsize=10,
                                       horizontalalignment='center',
                                       verticalalignment='top',
                                       color='black')
                 self.signal_plot.plot([self.msmt.freq_at_local_max, self.msmt.freq_at_local_max],
-                                      [-150, self.msmt.Pxx_local_max],
+                                      [-150, self.msmt.Pxx_local_max_RCP],
                                       lw=1.4, color='black', linestyle='-', marker="D", markersize=3)
                 self.signal_plot.text(x=self.msmt.freq_at_local_max,
-                                      y=self.msmt.Pxx_local_max * 1.1,
+                                      y=self.msmt.Pxx_local_max_RCP * 1.1,
                                       s='local max', **font_arial, fontsize=10,
                                       horizontalalignment='center',
                                       verticalalignment='top',
@@ -569,22 +569,22 @@ class BSRAnimation(FigureCanvas):
                                       color='black')
 
                 # mark and label the bandwidth of both peaks
-                self.signal_plot.plot([self.msmt.bandwidth_of_max_start, self.msmt.bandwidth_of_max_stop],
-                                      [(self.msmt.Pxx_max - self.msmt.NdB_below), (self.msmt.Pxx_max - self.msmt.NdB_below)],
+                self.signal_plot.plot([self.msmt.bandwidth_RCP_at_max_start, self.msmt.bandwidth_RCP_at_max_stop],
+                                      [(self.msmt.Pxx_max_RCP - self.msmt.NdB_below), (self.msmt.Pxx_max_RCP - self.msmt.NdB_below)],
                                       lw=1.3, color='black', linestyle='-', marker="D", markersize=3)
-                self.signal_plot.text(x=(self.msmt.bandwidth_of_max_start + (self.msmt.bandwidth_of_max_stop - self.msmt.bandwidth_of_max_start) / 2),
-                                      y=(self.msmt.Pxx_max - self.msmt.NdB_below),
+                self.signal_plot.text(x=(self.msmt.bandwidth_RCP_at_max_start + (self.msmt.bandwidth_RCP_at_max_stop - self.msmt.bandwidth_RCP_at_max_start) / 2),
+                                      y=(self.msmt.Pxx_max_RCP - self.msmt.NdB_below),
                                       s='bandwidth\nat -' + str(self.msmt.NdB_below) + ' dB', **font_arial, fontsize=10,
                                       horizontalalignment='center',
                                       verticalalignment='center',
                                       color='black')
                 self.signal_plot.plot(
-                    [self.msmt.bandwidth_local_peak_start, self.msmt.bandwidth_local_peak_stop],
-                    [(self.msmt.Pxx_local_max - self.msmt.NdB_below),
-                     (self.msmt.Pxx_local_max - self.msmt.NdB_below)],
+                    [self.msmt.bandwidth_RCP_local_max_start, self.msmt.bandwidth_RCP_local_max_stop],
+                    [(self.msmt.Pxx_local_max_RCP - self.msmt.NdB_below),
+                     (self.msmt.Pxx_local_max_RCP - self.msmt.NdB_below)],
                     lw=1.3, color='black', linestyle='-', marker="D", markersize=3)
-                self.signal_plot.text(x=(self.msmt.bandwidth_local_peak_start + (self.msmt.bandwidth_local_peak_stop - self.msmt.bandwidth_local_peak_start) / 2),
-                                      y=(self.msmt.Pxx_local_max - self.msmt.NdB_below),
+                self.signal_plot.text(x=(self.msmt.bandwidth_RCP_local_max_start + (self.msmt.bandwidth_RCP_local_max_stop - self.msmt.bandwidth_RCP_local_max_start) / 2),
+                                      y=(self.msmt.Pxx_local_max_RCP - self.msmt.NdB_below),
                                       s='bandwidth\nat -' + str(self.msmt.NdB_below) + ' dB',
                                       **font_arial, fontsize=10,
                                       horizontalalignment='center',

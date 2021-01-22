@@ -33,24 +33,32 @@ class SignalAnalysis:
         self.freq_local_max = None
 
         # Analysis Results
-        self.Pxx_max = None
+        self.Pxx_max_RCP = None
         self.freq_at_max = None
 
-        self.bandwidth_of_max = None
-        self.bandwidth_of_max_start = None
-        self.bandwidth_of_max_stop = None
-        self.Pxx_noise_var = None
+        self.bandwidth_RCP_at_max = None
+        self.bandwidth_RCP_at_max_start = None
+        self.bandwidth_RCP_at_max_stop = None
+        self.Pxx_noise_var_RCP = None
         self.delta_f_calc = None
 
         # Selected Range
-        self.Pxx_local_max = None
+        self.Pxx_local_max_RCP = None
         self.freq_at_local_max = None
-        self.bandwidth_local_peak = None
-        self.bandwidth_local_peak_start = None
-        self.bandwidth_local_peak_stop = None
+        self.bandwidth_RCP_local_max = None
+        self.bandwidth_RCP_local_max_start = None
+        self.bandwidth_RCP_local_max_stop = None
         self.Pxx_local_var = None
-        self.dPxx_max = None
+        self.delta_Pxx_max_RCP = None
         self.delta_f_obsv = None
+
+        # LCP copies
+        self.Pxx_LCP_at_max = None
+        self.bandwidth_LCP_at_max = None
+        self.Pxx_noise_var_LCP = None
+        self.Pxx_LCP_at_local_max = None
+        self.bandwidth_LCP_at_local_max = None
+        self.delta_Pxx_LCP = None
 
         # user errors
         self.error_NdB_below = False
@@ -66,16 +74,16 @@ class SignalAnalysis:
         print('NdB_below:            ', self.NdB_below)
         print('freq_local_min:       ', self.freq_local_min)
         print('freq_local_max:       ', self.freq_local_max)
-        print('Pxx_max:              ', self.Pxx_max)
+        print('Pxx_max_RCP:              ', self.Pxx_max_RCP)
         print('freq_at_max:          ', self.freq_at_max)
-        print('bandwidth_of_max:     ', self.bandwidth_of_max)
-        print('Pxx_noise_var:        ', self.Pxx_noise_var)
+        print('bandwidth_RCP_at_max:     ', self.bandwidth_RCP_at_max)
+        print('Pxx_noise_var_RCP:        ', self.Pxx_noise_var_RCP)
         print('delta_f_calc:              ', self.delta_f_calc)
-        print('Pxx_local_max:        ', self.Pxx_local_max)
+        print('Pxx_local_max_RCP:        ', self.Pxx_local_max_RCP)
         print('freq_at_local_max:    ', self.freq_at_local_max)
-        print('bandwidth_local_peak: ', self.bandwidth_local_peak)
+        print('bandwidth_RCP_local_max: ', self.bandwidth_RCP_local_max)
         print('Pxx_local_var:        ', self.Pxx_local_var)
-        print('dPxx_max:             ', self.dPxx_max)
+        print('delta_Pxx_max_RCP:             ', self.delta_Pxx_max_RCP)
         print('delta_f_obsv:              ', self.delta_f_obsv)
         print()
 
@@ -88,7 +96,7 @@ def set_value(value, default):
 
 
 # screen4results_v1.py
-def analyze_plot(s, freqs, Pxx, NdB_below=None, freq_local_min=None, freq_local_max=None):
+def analyze_plot(s, freqs, Pxx, freqs_LCP, Pxx_LCP, NdB_below=None, freq_local_min=None, freq_local_max=None):
     # ----------------------- SIGNAL ANALYSIS RESULTS -----------------------
 
     # save signal analysis results to object, which is passed between functions
@@ -131,7 +139,8 @@ def analyze_plot(s, freqs, Pxx, NdB_below=None, freq_local_min=None, freq_local_
 
     # simply the maximum y value over the full x-range of frequencies
     # Display Name in GUI: “Y-Max (global)”
-    msmt.Pxx_max = max(Pxx)
+    msmt.Pxx_max_RCP = Pxx[np.argmax(Pxx)]
+    msmt.Pxx_LCP_at_max = Pxx_LCP[np.argmax(Pxx)]
 
     # simply the x-value (frequency) of the max(y) we just found
     # Display Name in GUI: “X at Y-Max”
@@ -246,9 +255,11 @@ def analyze_plot(s, freqs, Pxx, NdB_below=None, freq_local_min=None, freq_local_
 
     # Display Name in GUI: “Bandwidth”
     bw_of_max = get_bandwidth(freqs, Pxx, msmt.NdB_below)  # , exclude_zero=True)
-    msmt.bandwidth_of_max = bw_of_max[0]
-    msmt.bandwidth_of_max_start = bw_of_max[1]
-    msmt.bandwidth_of_max_stop = bw_of_max[2]
+    msmt.bandwidth_RCP_at_max = bw_of_max[0]
+    msmt.bandwidth_RCP_at_max_start = bw_of_max[1]
+    msmt.bandwidth_RCP_at_max_stop = bw_of_max[2]
+    # TODO: implement
+    msmt.bandwidth_LCP_at_max = 0
 
     # Analyze signal noise characteristics
     # First define the x-ranges where there should be ONLY noise and never a signal
@@ -260,7 +271,8 @@ def analyze_plot(s, freqs, Pxx, NdB_below=None, freq_local_min=None, freq_local_
     # below its mean value in dB. You can only safely distinguish a signal from the
     # noise if that signal is at least 3dB higher than the noise’s standard deviation.
     # Display Name in GUI: "Noise Variation"
-    msmt.Pxx_noise_var = np.std(Pxx[in_noise_range])
+    msmt.Pxx_noise_var_RCP = np.std(Pxx[in_noise_range])
+    msmt.Pxx_noise_var_LCP = np.std(Pxx_LCP[in_noise_range])
 
     # This is the predicted/calculated frequency separation between the direct
     # signal and the echo signal and has already been calculated in the Processing
@@ -273,12 +285,13 @@ def analyze_plot(s, freqs, Pxx, NdB_below=None, freq_local_min=None, freq_local_
     # After the user selects an x-range in the Settings panel, this output parameter
     # will be the maximum y value in between those bounds.
     # Display Name in GUI: "Y-Max (local)"
-    msmt.Pxx_local_max = max(Pxx[in_selected_range])
+    msmt.Pxx_local_max_RCP = Pxx[np.argmax(Pxx[in_selected_range])]
+    msmt.Pxx_LCP_at_local_max = Pxx_LCP[np.argmax(Pxx[in_selected_range])]
 
     # A signal is considered to be "buried in the noise" unless it is more than 3 dB
     # above the noise level.
-    detectability_threshold = msmt.Pxx_noise_var + 3.0
-    if msmt.Pxx_local_max <= detectability_threshold:
+    detectability_threshold = msmt.Pxx_noise_var_RCP + 3.0
+    if msmt.Pxx_local_max_RCP <= detectability_threshold:
         print("Warning: local max may not be a signal; "
               "detectability limit is >= 3 dB above the noise.")
         # TODO: display errors to user
@@ -289,7 +302,7 @@ def analyze_plot(s, freqs, Pxx, NdB_below=None, freq_local_min=None, freq_local_
     msmt.freq_at_local_max = freqs_in_range[Pxx[in_selected_range].argmax()]
 
     # Same as the bandwidth formula above, but confined within the selected x-range.
-    if msmt.Pxx_local_max <= msmt.NdB_below:
+    if msmt.Pxx_local_max_RCP <= msmt.NdB_below:
         print("Error: Bandwidth cannot be measured this far below peak. 2")
         # TODO: display errors to user
         msmt.error_NdB_below = True
@@ -298,9 +311,11 @@ def analyze_plot(s, freqs, Pxx, NdB_below=None, freq_local_min=None, freq_local_
 
     # Display Name in GUI: “Bandwidth”
     bw_of_local = get_bandwidth(freqs[in_selected_range], Pxx[in_selected_range], msmt.NdB_below)
-    msmt.bandwidth_local_peak = bw_of_local[0]
-    msmt.bandwidth_local_peak_start = bw_of_local[1]
-    msmt.bandwidth_local_peak_stop = bw_of_local[2]
+    msmt.bandwidth_RCP_local_max = bw_of_local[0]
+    msmt.bandwidth_RCP_local_max_start = bw_of_local[1]
+    msmt.bandwidth_RCP_local_max_stop = bw_of_local[2]
+    # TODO: implement
+    msmt.bandwidth_LCP_at_local_max = 0
 
     # This will tell us how much the power oscillates from its mean value within the
     # selected x-range. The higher the variance, the harder it is to accurately
@@ -310,7 +325,8 @@ def analyze_plot(s, freqs, Pxx, NdB_below=None, freq_local_min=None, freq_local_
 
     # This is the difference between the height of the two peaks in this graph.
     # Display Name in GUI: “delta_Y-Max”
-    msmt.dPxx_max = msmt.Pxx_max - msmt.Pxx_local_max
+    msmt.delta_Pxx_max_RCP = msmt.Pxx_max_RCP - msmt.Pxx_local_max_RCP
+    msmt.delta_Pxx_LCP = msmt.Pxx_LCP_at_max - msmt.Pxx_LCP_at_local_max
 
     # This is the measured frequency separation between the two peaks in this graph.
     # Display Name in GUI: “delta_X Observed (𝛿f)”
