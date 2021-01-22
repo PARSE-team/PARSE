@@ -1,8 +1,17 @@
 ----------------------
 Current ToDo:
-(01.07)
+(01.22)
 
-------
+- "delta-f" --> "df"
+- "Tutorial" --> "Tutorial Video"
+- upload screenshots to ReadMe
+    - file selection
+	- Rosetta direct signal
+- make play button an icon and more prominent
+- add warning to say file is slow!
+- review error messages
+- review Liz's min/max values
+- in overview, use that signal and then use the peak at time as freqcenter
 
 ------
 
