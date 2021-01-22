@@ -2,7 +2,7 @@
 # Edit at https://www.gitignore.io/?templates=macos,python,windows,virtualenv,sublimetext,pycharm+all,visualstudio,visualstudiocode
 
 # PARSE
-# target/
+target/
 # src/main/resources/base/data/
 
 ### macOS ###
