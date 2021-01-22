@@ -1,0 +1,116 @@
+----------------------
+Current ToDo:
+(01.07)
+
+------
+
+------
+
+1) use designer to make 3 file buttons
+2) DONE: use designer to make a new file selection window (if not already)
+3) in designer add a global tag and delete the variance
+
+4) add resources for both datasets
+5) update methods to access resource files
+
+6) windows exe
+
+
+
+- get the app running again
+- variance correction, email Liz
+- double check code ocean thing
+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+--->
+
+- add requirements.txt
+
+- tutorial video
+- general cleanup
+    - remove variance
+    - bundle data
+    - ask Liz about bundling Rosetta too
+        - if not, remove mkelley
+    - rewrite to avoid astropy datetimes
+    - check the example GitHub's to see how to remove dependencies
+    - split up draw function
+    - rename functions and classes
+    - make background white
+    - make other improvements from experience
+    - make installers
+    - generally compare code to example repos
+- make a branch that is for SoftwareX
+    - start window should have ? buttons
+    - file selection window without quick viewer
+    - remove dependencies (especially Astropy)
+- CRUCIAL DEBUG:
+    - seconds in file label has global time wrong
+    - remove variance
+    - make results graph align better
+
+
+ONCE PAPER IS FINALIZED:
+- readme
+- documentation
+
+----------------------
+SoftwareX ToDo:
+
+- input formats
+    - Dawn: include sample files as resource
+    - Rosetta: include sample files as resource
+    - Choose File: user defined data files (.npy)
+
+- update UI windows to reflect input formats
+
+- UNIT TESTS
+	- unit test for if the user-defined dataset is formatted correctly
+
+- distribution
+    - structure repository
+    - make windows installer
+
+- upload
+
+----------------------
+General ToDo:
+
+- write unit tests and tests?
+
+- split update_frame?
+
+- is the signal window reinitialized after back arrow, or just hidden (old settings?)
+
+- does the program read the name of the Dawn file to find metadata, like the band name?
+
+- could export a config file, how long would it take to implement?
+
+- if Apply Changes already uses a worker thread, then add a progress bar, but don't waste time on it!
+
+- handle exporting (use ffmpeg to export video)
+
+- blitting
+
+----------------------
+Later ToDo:
+
+- make sure this is thread safe...
+    https://www.learnpyqt.com/courses/concurrent-execution/multithreading-pyqt-applications-qthreadpool/
+    In these cases it is often better to investigate using a pure-Python thread pool
+    (e.g. concurrent futures) to keep your processing and thread-event handling further isolated
+    from your GUI. However, note that any Python GUI code can block other Python code unless it's
+    in a separate process.
+    https://stackoverflow.com/questions/36665850/matplotlib-animation-inside-your-own-gui
+
+- check for memory leaks
+
+- manually implement mkelley functions?
+    - if not, then isolate them?
+
+
+- highlight two files at a time?
+
+- show frames buffered
+
+- fix window initialization: https://www.learnpyqt.com/tutorials/creating-multiple-windows/
+
+pyrcc5 -o resources.py resources.qrc
