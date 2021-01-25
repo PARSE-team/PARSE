@@ -1,4 +1,3 @@
-----------------------
 Current ToDo:
 (01.22)
 
@@ -13,25 +12,46 @@ Current ToDo:
 - review Liz's min/max values
 - in overview, use that signal and then use the peak at time as freqcenter
 
-------
+(01.23)
 
-1) use designer to make 3 file buttons
-2) DONE: use designer to make a new file selection window (if not already)
-3) in designer add a global tag and delete the variance
+- 0% --> (minimum sample size) (next to percent window per hop)
+- change window preview to calc only one time
+- put window properties + playback settings as separate apply button
+- window overview should display LCP as well
+- make FileSelection combine two twos into one
+- change "sec in file" --> to "sec in day"
+- date in top right isn't updating correctly (change to be changed when start_sec isn't 0)
+- try to make XYCursor label more prominent (font size, color, or "cursor value")
 
-4) add resources for both datasets
-5) update methods to access resource files
+- improve the text labels overlapping
+    - only keep selected file
+    - if you have time, make it right
 
-6) windows exe
+- make PARSE logo higher-resolution
 
+- tutorial --> video tutorial
+    - link to youtube, link to manual
+- requirements (remove)
+- documentation --> manual
+- source code
+    - link to the python file (sub folder)
+- relevant publications (open-access links?)
 
+- make selected range slightly less than the plot window
 
-- get the app running again
-- variance correction, email Liz
-- double check code ocean thing
+- add word doc changes for bandwidth
+
+BUG FIX:
+- FIX THE ARGMAX
+- CHECK BRACKETS
+
+ERRORS:
+just direct signal:
+- globals work, locals show the same
+no signal:
+- dashes?
+
 -+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+--->
-
-- add requirements.txt
 
 - tutorial video
 - general cleanup

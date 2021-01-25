@@ -8,9 +8,6 @@ UI Notes:
 - add an option to save session settings
 - used @cashed_property for file selection window (check learnypyqt)
 
-# FIXME: threading?
-# TODO: optimize import statements by calling them within specific functions?
-
 # TODO: optional feature: support for delta-F
 # TODO: optional feature: geometry (?)
 
@@ -21,6 +18,4 @@ Licencing:
 https://choosealicense.com
 https://opensource.org
 
-# cd C:\Users\pauls\AppData\Local\Programs\Python\Python37\Scripts
-# pyuic5 -x "C:\Users\pauls\Desktop\ui\start_screen.ui"
-#   -o "C:\Users\pauls\Desktop\ui\start_screen.py"
+pyuic5 -x "file.ui" -o "file.py"
