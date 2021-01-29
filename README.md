@@ -1,49 +1,26 @@
 # Processing & Analysis for Radio Science Experiments (PARSE)
+#### Elizabeth M. Palmer, Paul Sirri, Essam Heggy
+#### University of Southern California, Department of Electrical and Computer Engineering
+#### Developer Contact: paulsirri [ at ] gmail.com
+*README [v1]*
+![PARSE Logo](src/main/resources/base/PARSE_USC_logo_bw_red.png)
 
-### Functionality:
+PARSE is a user-friendly GUI tool to assist planetary scientists in analyzing Deep Space Network (DSN) radio science datasets without requiring expertise in signal processing. PARSE can be used on bistatic radar (BSR) surface-scatter experiments, which use the radio communications antenna aboard a spacecraft to transmit X- or S-band radiowaves that scatter from the planetary object's surface and are then received by the DSN. BSR surface echoes can be used to quantify surface roughness at the cm-dm scale, for example, which can be used to constrain thermophysical models of planetary regoliths, support detailed geomorphological mapping, and reduce risk associated with site selection for landing and sampling missions. An example of such an experiment is given by [Palmer, Heggy & Kofman (2017)](https://doi.org/10.1038/s41467-017-00434-6).
 
-TODO: This is where I can describe what the app does.
+An example workflow is shown in the following video:
+[![Tutorial Video](youtube URL to video screenshot -*.jpg)](youtube short URL to video)
 
-### How to Download the Application:
+![PARSE flowchart](src/main/resources/base/softwareX_fig_flowchart_v5.png)
+**Workflow Summary:** After choosing the data file and supplying basic target body information and spacecraft orbital parameters, users are then shown recommended processing parameters and given the ability to conveniently adjust them. Once the parameters are entered, the user can run the plotting animation to iterate over the time series, displaying a sequence of power spectral density plots, which show the frequency distribution of the signal power received by the DSN. This animation can be paused at any time to better view a single power spectral density. Once the animation is paused, the user can select the signal analysis tab to extract key features from the plot or export it as an image file.
 
-TODO: Here I can explain how to download the application.
+## Installation & Getting Started
 
-### How to Use the Interface to Process and Analyze Radio Data:
+1. Find the installer package for your system:
+- For Microsoft Windows: [build / windows / PARSESetup.exe](https://github.com/PARSE-team/PARSE/tree/main/build/windows/PARSESetup.exe) > Click the "Download" button
+- For MacOS X: [build / mac / PARSESetup.pkg](https://github.com/PARSE-team/PARSE/tree/main/build/mac/PARSESetup.pkg) > Click the "Download" button
+2. Click OK to download even though warning messages will pop up that there is no named publisher. Note that the installer package is large (2-3 GB) since it includes large raw data files, and will take time to download depending on your connection speeds.
+3. Click the downloaded file to start installation. Click OK to install even though may be a warning message saying there is no named publisher.
+4. The first time you run PARSE, expect 5 to 10 second delays while it reads in the example raw files for the first time.
 
-Once the application is launched, you will see a start screen with several buttons in the right-hand column. 
-
-TODO: insert annotated image
-
-Selecting "Tutorial" will provide a simple and user-friendly guide to using the application. 
-
-Alternatively, selecting "Documentation" will provide a scientific and technical description of the program's underlying processes, so the user can better understand how it has been implemented.
-
-### Supported Missions and Data Formats:
-
-This distribution is conveniently bundled with data files from the following missions:
-- Rosetta Mission (Target: Comet 67P)
-- Dawn Mission (Target: Asteroid Vesta)
-
-Alternatively, the user may upload data files from other missions or experiments. To do so, please see the instructions below.
-
-##### How to upload your own data files:
-
-To upload data files manually, please convert them to the .npy format. This format is common in data science, highly optimized, and platform independent. To convert data files to this format, the user will need a basic familiarity with:
-- Python 3
-- Numpy (a standard package for scientific computing with Python)
-
-TODO: explain the Numpy formats!
-
-If you run into issues with this process, please contact the developer at paulsirri@gmail.com
-
- # TODO: REMOVE OLD JUNK
-Note: this program only accepts data formatted using NASA's PDS3 standard (see documentation online)
-
-For this program to run correctly, please ensure the following are true of the uploaded files :
-- files must use the "detached label" sub-format of the PDS3 data standard (see chapter 5.1 in the PDS3 documentation)
-- once accurately stored according to the PDS3 detached label format, verify the following in the label file:
-    PDS_VERSION_ID = PDS3
-    RECORD_TYPE = FIXED_LENGTH
-    INTERCHANGE_FORMAT = BINARY
-- within the "TABLE" object, the radio signal data (BSR, or IQ-samples, etc.) must be stored in a "COLUMN" object with:
-    NAME = "SAMPLE WORDS"
+## Error Reporting:
+If you run into issues with this process, please contact the developer at paulsirri [ at ] gmail.com
