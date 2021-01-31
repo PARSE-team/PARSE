@@ -1,145 +1,147 @@
-Current ToDo:
-(01.22)
+--------------------------------------------------------------------------------------------------
 
-- "delta-f" --> "df"
-- "Tutorial" --> "Tutorial Video"
-- upload screenshots to ReadMe
-    - file selection
-	- Rosetta direct signal
-- make play button an icon and more prominent
-- add warning to say file is slow!
-- review error messages
-- review Liz's min/max values
-- in overview, use that signal and then use the peak at time as freqcenter
+TODO: SoftwareX Pre-Release
 
-(01.23)
+- make other menu windows
 
-- 0% --> (minimum sample size) (next to percent window per hop)
-- change window preview to calc only one time
-- put window properties + playback settings as separate apply button
-- window overview should display LCP as well
-- make FileSelection combine two twos into one
-- change "sec in file" --> to "sec in day"
-- date in top right isn't updating correctly (change to be changed when start_sec isn't 0)
-- try to make XYCursor label more prominent (font size, color, or "cursor value")
+- fixes to overview plot
+    - change window preview to calc only once
+    - put window properties + playback settings as separate apply button
+    - window overview should display LCP as well
+
+- add export video and ascii buttons in bottom right (xyy) (use ffmpeg to export video)
+
+- implement user-defined file support
+    - add a function pathway for each data source
+    - should offer to save as binary for future use
+    - other error messages for user-defined
+    - fix user-defined data bug
+
+- make tabs font black
+
+- speed max = 6
+
+- if a file has only direct signal or noise, manually set the ylim on the overview plot
+
+- truncate Rosetta file and label
+    - check which values mkelley reads from label file, then edit them
+
+- merge overview patch from PARSETemp
+
+- remove label viewer in file selection window
 
 - improve the text labels overlapping
-    - only keep selected file
-    - if you have time, make it right
+    - only keep selected range
+    - set default selected range smaller than the window
+    - (later) if you have time, make it right
 
-- make PARSE logo higher-resolution
+- use icons for play/pause
 
-- tutorial --> video tutorial
-    - link to youtube, link to manual
-- requirements (remove)
-- documentation --> manual
-- source code
-    - link to the python file (sub folder)
-- relevant publications (open-access links?)
+- adjust min/max for parameters
+    - 0% --> (minimum sample size) (next to percent window per hop)
 
-- make selected range slightly less than the plot window
+- improve timestamps
+    - avoid astropy altogether? (check if it works correctly on installer first)
+    - change "sec in file" --> to "sec in day" (GRAPH OVERVIEW)
+    - change sec in file to global time
+        - change widget to a datetime
+        - set min and max datetimes
+        - read user's datetime into astropy
+        - use instead of start_sec_user
+    - date in top right isn't updating correctly (change to be changed when start_sec isn't 0)
+    - change overview times to have no decimals
 
-- add word doc changes for bandwidth
-
-BUG FIX:
-- FIX THE ARGMAX
-- CHECK BRACKETS
-
-ERRORS:
-just direct signal:
-- globals work, locals show the same
-no signal:
-- dashes?
-
--+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+--->
-
-- tutorial video
-- general cleanup
-    - remove variance
-    - bundle data
-    - ask Liz about bundling Rosetta too
-        - if not, remove mkelley
-    - rewrite to avoid astropy datetimes
-    - check the example GitHub's to see how to remove dependencies
-    - split up draw function
-    - rename functions and classes
-    - make background white
-    - make other improvements from experience
-    - make installers
-    - generally compare code to example repos
-- make a branch that is for SoftwareX
-    - start window should have ? buttons
-    - file selection window without quick viewer
-    - remove dependencies (especially Astropy)
-- CRUCIAL DEBUG:
-    - seconds in file label has global time wrong
-    - remove variance
-    - make results graph align better
+- Documentation
+    - Youtube video
+    - README
+        - warning about download, install, open, and processing times
+        - screenshots
+        - (later) resize images
+    - (later) in the paper and manual, explain multithreading and workers
+    - (later) explain resource bundling and ApplicationContext
 
 
-ONCE PAPER IS FINALIZED:
-- readme
-- documentation
+--------------------------------------------------------------------------------------------------
 
-----------------------
-SoftwareX ToDo:
+TODO: SoftwareX Release
 
-- input formats
-    - Dawn: include sample files as resource
-    - Rosetta: include sample files as resource
-    - Choose File: user defined data files (.npy)
+- Review Liz's Changes:
+    - set min/max values
+    - ERROR bandwidth (google doc)
+    - ERROR direct signal
+        - use the same location function for freq center and overview plot
+    - if there is an error, update the signal analysis tab accordingly
+        - just direct signal: globals work, locals show the same
+        - no signal: dashes?
+    - other errors?
 
-- update UI windows to reflect input formats
-
-- UNIT TESTS
-	- unit test for if the user-defined dataset is formatted correctly
-
-- distribution
-    - structure repository
-    - make windows installer
-
-- upload
-
-----------------------
-General ToDo:
-
-- write unit tests and tests?
-
-- split update_frame?
-
-- is the signal window reinitialized after back arrow, or just hidden (old settings?)
+- clean up animation function(s)
 
 - does the program read the name of the Dawn file to find metadata, like the band name?
 
-- could export a config file, how long would it take to implement?
-
 - if Apply Changes already uses a worker thread, then add a progress bar, but don't waste time on it!
 
-- handle exporting (use ffmpeg to export video)
+- combine rows in file selection window (or highlight both)
 
-- blitting
+- make all text interactive
 
-----------------------
-Later ToDo:
+- BUG: is the signal window reinitialized after back arrow, or just hidden (old settings?)
+
+- add a menu bar, even if it's empty
+
+- make PARSE logo higher-resolution
+
+- try to make XYCursor label more prominent (font size, color, or "cursor value")
+
+- make red line thicker
+
+- fix windows icon
+
+- BUG: double check potential mistake (near get_psd in signal_processing.py)
+    - fix the argmax (np vs python)
+    - check if the brackets are causing an issue
+
+- rename functions and classes
+
+- clean code
+    - update file descriptions
+    - improve comments and docstrings
+    - remove print statements
+    - remove tasks
+    - line length
+
+- generally compare code to example repos
+
+- check the example GitHub's to see how to remove dependencies
+
+- WHAT ARE AND HOW TO WRITE UNIT TESTS?
+    - unit tests should throw interface errors
+    - test if the PDS data is being read correctly
+    - tests for if the user-defined dataset is formatted correctly
+
+- remake environment and generate installers
+
+
+--------------------------------------------------------------------------------------------------
+
+TODO: Later
 
 - make sure this is thread safe...
-    https://www.learnpyqt.com/courses/concurrent-execution/multithreading-pyqt-applications-qthreadpool/
+    - https://www.learnpyqt.com/courses/concurrent-execution/multithreading-pyqt-applications-qthreadpool/
     In these cases it is often better to investigate using a pure-Python thread pool
     (e.g. concurrent futures) to keep your processing and thread-event handling further isolated
     from your GUI. However, note that any Python GUI code can block other Python code unless it's
     in a separate process.
-    https://stackoverflow.com/questions/36665850/matplotlib-animation-inside-your-own-gui
+    - https://stackoverflow.com/questions/36665850/matplotlib-animation-inside-your-own-gui
 
 - check for memory leaks
 
-- manually implement mkelley functions?
-    - if not, then isolate them?
-
-
-- highlight two files at a time?
+- manually implement mkelley functions
 
 - show frames buffered
 
 - fix window initialization: https://www.learnpyqt.com/tutorials/creating-multiple-windows/
 
 pyrcc5 -o resources.py resources.qrc
+-   Note: this command is for freezing a native PyQt5 resource file,
+    though PARSE uses a different implementation (see FBS ApplicationContext)
