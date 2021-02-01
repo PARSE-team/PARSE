@@ -40,7 +40,7 @@ class SignalAnalysis:
         self.bandwidth_RCP_at_max_start = None
         self.bandwidth_RCP_at_max_stop = None
         self.Pxx_noise_var_RCP = None
-        self.delta_f_calc = None
+        self.df_calc = None
 
         # Selected Range
         self.Pxx_local_max_RCP = None
@@ -50,7 +50,7 @@ class SignalAnalysis:
         self.bandwidth_RCP_local_max_stop = None
         self.Pxx_local_var = None
         self.delta_Pxx_max_RCP = None
-        self.delta_f_obsv = None
+        self.df_obsv = None
 
         # LCP copies
         self.Pxx_LCP_at_max = None
@@ -78,13 +78,13 @@ class SignalAnalysis:
         print('freq_at_max:          ', self.freq_at_max)
         print('bandwidth_RCP_at_max:     ', self.bandwidth_RCP_at_max)
         print('Pxx_noise_var_RCP:        ', self.Pxx_noise_var_RCP)
-        print('delta_f_calc:              ', self.delta_f_calc)
+        print('df_calc:              ', self.df_calc)
         print('Pxx_local_max_RCP:        ', self.Pxx_local_max_RCP)
         print('freq_at_local_max:    ', self.freq_at_local_max)
         print('bandwidth_RCP_local_max: ', self.bandwidth_RCP_local_max)
         print('Pxx_local_var:        ', self.Pxx_local_var)
         print('delta_Pxx_max_RCP:             ', self.delta_Pxx_max_RCP)
-        print('delta_f_obsv:              ', self.delta_f_obsv)
+        print('df_obsv:              ', self.df_obsv)
         print()
 
 
@@ -109,7 +109,7 @@ def analyze_plot(s, freqs, Pxx, freqs_LCP, Pxx_LCP, NdB_below=None, freq_local_m
     Pxx     1D array of power values (dB) from Matplotlib’s PSD function
     freqs   1D array of x-axis frequencies (Hz) from Matplotlib’s PSD function
     freq_   frequency of something (Hz)
-    delta_f      differential Doppler shift (aka frequency separation between the 
+    df      differential Doppler shift (aka frequency separation between the 
                 direct and echo peaks)
     bw      bandwidth (Hz); frequency width of a peak measured at a predefined 
                 height on said peak
@@ -264,8 +264,8 @@ def analyze_plot(s, freqs, Pxx, freqs_LCP, Pxx_LCP, NdB_below=None, freq_local_m
     # Analyze signal noise characteristics
     # First define the x-ranges where there should be ONLY noise and never a signal
     in_noise_range = np.where(
-        ((freqs > -0.8 * s.sample_rate / 2) & (freqs < (msmt.freq_at_max - 1.2 * s.delta_f_calc))) |
-        ((freqs < 0.8 * s.sample_rate / 2) & (freqs > (msmt.freq_at_max + 1.2 * s.delta_f_calc))))
+        ((freqs > -0.8 * s.sample_rate / 2) & (freqs < (msmt.freq_at_max - 1.2 * s.df_calc))) |
+        ((freqs < 0.8 * s.sample_rate / 2) & (freqs > (msmt.freq_at_max + 1.2 * s.df_calc))))
 
     # This next variable will tell us how much the noise power oscillates above and
     # below its mean value in dB. You can only safely distinguish a signal from the
@@ -276,9 +276,9 @@ def analyze_plot(s, freqs, Pxx, freqs_LCP, Pxx_LCP, NdB_below=None, freq_local_m
 
     # This is the predicted/calculated frequency separation between the direct
     # signal and the echo signal and has already been calculated in the Processing
-    # Settings object (Screen 3) as s.delta_f_calc:
+    # Settings object (Screen 3) as s.df_calc:
     # Display Name in GUI: "delta_X Predicted (𝛿f)"
-    msmt.delta_f_calc = s.delta_f_calc
+    msmt.df_calc = s.df_calc
 
     # ----- Selected Range -----
 
@@ -330,7 +330,7 @@ def analyze_plot(s, freqs, Pxx, freqs_LCP, Pxx_LCP, NdB_below=None, freq_local_m
 
     # This is the measured frequency separation between the two peaks in this graph.
     # Display Name in GUI: “delta_X Observed (𝛿f)”
-    msmt.delta_f_obsv = msmt.freq_at_max - msmt.freq_at_local_max
+    msmt.df_obsv = msmt.freq_at_max - msmt.freq_at_local_max
 
     print()
     msmt.pprint()

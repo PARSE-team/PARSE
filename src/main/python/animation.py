@@ -562,7 +562,7 @@ class BSRAnimation(FigureCanvas):
                     lw=1.4, color='black', linestyle='-', marker="D", markersize=4)
                 self.signal_plot.text(x=(np.max([self.msmt.freq_at_max, self.msmt.freq_at_local_max]) + 1),
                                       y=(self.s.ylim_min + (self.s.ylim_max - self.s.ylim_min) * 0.1),
-                                      s='delta_f',
+                                      s='df',
                                       **font_arial, fontsize=11,
                                       horizontalalignment='right',
                                       verticalalignment='center',

@@ -42,7 +42,7 @@ class ProgramSettings:
         self.file_end_time = None
 
         # General Variables
-        self.delta_f_calc = None
+        self.df_calc = None
         self.sample_rate = None
         self.time_step = None
 
@@ -101,7 +101,7 @@ class ProgramSettings:
 
     def print_debug(self, flag):
         print('\n\nDEBUG ' + flag)
-        print('delta_f_calc:                           ', self.delta_f_calc)
+        print('df_calc:                           ', self.df_calc)
         print('dt_occ:                            ', self.dt_occ)
         print('sample_rate:                       ', self.sample_rate)
         # the old value was probably near 320000?
@@ -236,26 +236,26 @@ def get_freq_plot_center(overview_freqs, overview_pxx, mission):
     return freq_plot_center
 
 
-def get_plot_window(freq_plot_center, delta_f_calc, ppx_min, ppx_max):
+def get_plot_window(freq_plot_center, df_calc, ppx_min, ppx_max):
     """ A function that sets the recommended window properties for the plot. """
 
     """
     Choose x-range slightly beyond the frequency of the predicted echo signal. 
-    The default will be to go 20% further beyond the echo, or 1.2 x delta_f_calc.
+    The default will be to go 20% further beyond the echo, or 1.2 x df_calc.
 
     EXAMPLE: 
-    If the direct signal is centered at 250 Hz, and delta_f_calc is ± 100 Hz,
+    If the direct signal is centered at 250 Hz, and df_calc is ± 100 Hz,
     then the echo signal is predicted to have a frequency of 150 Hz or 350 Hz.
     So, we will choose an x-range for the plot to display from:
     a minimum of 250-1.2*(100) = 130 Hz, to a maximum of 250+1.2*(100) = 370 Hz.
     """
 
     # Display Name in GUI: “X-Axis min (Hz)”  # TODO: adjustable
-    xlim_min = freq_plot_center - 1.5 * delta_f_calc  # default value
+    xlim_min = freq_plot_center - 1.5 * df_calc  # default value
     xlim_min = (freq_plot_center - 80)
 
     # Display Name in GUI: “X-Axis max (Hz)”  # TODO: adjustable
-    xlim_max = freq_plot_center + 1.5 * delta_f_calc  # default value
+    xlim_max = freq_plot_center + 1.5 * df_calc  # default value
     xlim_max = (freq_plot_center + 80)
 
     """
@@ -303,7 +303,7 @@ def get_settings(filenames=None,
                  target=None, mission=None,
                  dt_occ=None, radius_target=None,
                  v_sc_orbital=None, altitude_sc=None,
-                 delta_f_calc=None, freq_res=None,
+                 df_calc=None, freq_res=None,
                  samples_per_raw_fft=None, seconds_per_raw_fft=None,
                  raw_fft_per_average=None, seconds_for_welch_user=None,
                  percent_window_per_hop=None, seconds_per_hop=None,
@@ -329,7 +329,7 @@ def get_settings(filenames=None,
     t		time (sec)
     dt	    change in time; duration (sec)
     theta		angle (radians)
-    delta_f	    differential Doppler shift (aka the frequency separation 
+    df	    differential Doppler shift (aka the frequency separation 
             between the direct and echo peaks)
 
     ###############
@@ -420,7 +420,7 @@ def get_settings(filenames=None,
     wavelength = speed_of_light / band_freq  # meters
 
     # predicted/calculated frequency separation between the direct signal and the echo signal,
-    # aka the differential Doppler shift (delta_f)
+    # aka the differential Doppler shift (df)
     theta_sc_orbital_phase = (s.v_sc_orbital * s.dt_occ) / (2 * (s.radius_target + s.altitude_sc))
     theta_tilt = np.arccos((s.radius_target - (s.v_sc_orbital * s.dt_occ / (2 * math.pi)))
                        / (s.radius_target + s.altitude_sc))
@@ -435,12 +435,12 @@ def get_settings(filenames=None,
     print('theta_tilt:                               ', theta_tilt)
 
     # Display name in GUI: “Calc. freq. separation (Hz)”   # TODO: adjustable
-    s.delta_f_calc = (s.v_sc_orbital / wavelength) * np.sin(theta_sc_orbital_phase) * abs(
+    s.df_calc = (s.v_sc_orbital / wavelength) * np.sin(theta_sc_orbital_phase) * abs(
         np.sin(theta_tilt) - np.sin(theta_tilt + theta_beamwidth / 2))
 
     if mission == 'Rosetta':
         # set to fixed value for Rosetta to ensure accurate parameter recommendations
-        s.delta_f_calc = 2  # FIXME: improve Rosetta pipeline
+        s.df_calc = 2  # FIXME: improve Rosetta pipeline
 
     # number of IQ samples recorded per second
     s.sample_rate = sample_rate
@@ -453,7 +453,7 @@ def get_settings(filenames=None,
     ###########################
 
     # suggested frequency resolution
-    freq_res_suggested = s.delta_f_calc / 30
+    freq_res_suggested = s.df_calc / 30
 
     # Display name in GUI: “L (# samples per FFT)”
     # samples of data used to calculate a single raw FFT
@@ -586,7 +586,7 @@ def get_settings(filenames=None,
     s.freq_plot_center = get_freq_plot_center(s.overview_freqs, s.overview_pxx, s.mission)
 
     # get default plot window settings
-    default_window_settings = get_plot_window(s.freq_plot_center, s.delta_f_calc, s.ppx_min, s.ppx_max)
+    default_window_settings = get_plot_window(s.freq_plot_center, s.df_calc, s.ppx_min, s.ppx_max)
     default_x_min, default_x_max, default_y_min, default_y_max = default_window_settings
 
     # use default window dimensions, except if user has entered other values
