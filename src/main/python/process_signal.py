@@ -132,7 +132,16 @@ def get_psd(data, sample_rate, samples_per_raw_fft, noverlap):
     """ A function that performs a series of mathematical operations
     on a subset of raw IQ data, then returns an x-axis and y-axis. """
 
-    # power spectral density
+    # First remove the DC offset (i.e., the mean value or vertical offset)
+    # of these raw I and Q amplitudes (where I is the real part and Q is
+    # the imaginary part), otherwise there will be a strong spike at 0 Hz
+    # in the PSD
+
+    # subtract mean from data to avoid artifacts in PSD plots
+    data.real = data.real - np.mean(data.real)
+    data.imag = data.imag - np.mean(data.imag)
+
+    # PSD: power spectral density plot
     psd_frame = psd(data,
                     Fs=sample_rate,
                     NFFT=samples_per_raw_fft,

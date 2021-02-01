@@ -31,7 +31,9 @@ from PyQt5.QtWidgets import QMainWindow, QAbstractItemView, QTableWidget, \
 from ui.ui_20210125.StartScreen_v31 import Ui_MainWindow as Start_Ui
 # from ui.ui_20201106.FileSelection_v18_dawn import Ui_MainWindow as File_Ui
 from ui.ui_20200906.FileSelection_v13 import Ui_MainWindow as File_Ui
-from ui.ui_20210125.SignalAnalysis_v32 import Ui_MainWindow as Signal_Ui
+from ui.ui_20210121.SignalAnalysis_v30 import Ui_MainWindow as Signal_Ui
+# from ui.ui_20210121.SignalAnalysis_v32 import Ui_MainWindow as Signal_Ui
+from ui.ui_20210129.glucokeep_about import Ui_MainWindow as About_Ui
 
 from read_data import find_polar_pair, file_to_numpy, get_iq_data, get_files, get_sample_rate, DataLabel
 from process_signal import get_settings, ProgramSettings
@@ -67,7 +69,9 @@ class StartWindow(QMainWindow, Start_Ui):
 
         self.btn_dawnvesta.clicked.connect(self.choose_dawn)
         self.btn_rosetta.clicked.connect(self.choose_rosetta)
-        self.btn_userfile.clicked.connect(self.choose_userfile)
+        # self.btn_userfile.clicked.connect(self.choose_userfile)
+        self.btn_contact.clicked.connect(self.show_contact)
+        self.btn_sourcecode.clicked.connect(self.show_sourcecode)
 
     def choose_dawn(self):
         self.file_window = FileWindow(self.ctx, source='dawn')
@@ -81,11 +85,11 @@ class StartWindow(QMainWindow, Start_Ui):
 
     def choose_userfile(self):
         # TODO: implement
-        self.userfile = QFileDialog.getOpenFileNames()
+        """self.userfile = QFileDialog.getOpenFileNames()
         print("chose file: " + str(self.userfile))
         if self.userfile:
             pass
-            """userfile = DataLabel(file_name='user-defined',
+            userfile = DataLabel(file_name='user-defined',
                                  label=None,
                                  path_to_label=None,
                                  path_to_data=self.userfile,
@@ -98,10 +102,80 @@ class StartWindow(QMainWindow, Start_Ui):
             self.files_tuple = find_polar_pair(self.selected_file, self.data_labels)
             self.signal_window = SignalWindow(self.ctx, self.source, self.files_tuple)
             self.signal_window.show()
-            self.hide()"""
+            self.hide()
         else:
             # TODO: implement error dialog
-            print("directory error")
+            print("directory error")"""
+        pass
+
+    def show_contact(self):
+        self.contact_window = ContactUsWindow(self.ctx)
+        self.contact_window.show()
+        self.close()
+
+    def show_sourcecode(self):
+        self.sourcecode_window = SourceCodeWindow(self.ctx)
+        self.sourcecode_window.show()
+        self.close()
+
+
+class ContactUsWindow(QMainWindow, About_Ui):
+    def __init__(self, ctx, *args, **kwargs):
+        super(ContactUsWindow, self).__init__(*args, **kwargs)
+        self.ctx = ctx
+        self.setupUi(self)
+
+        # set the title
+        self.setWindowTitle("PARSE  Contact Us")
+
+        # connect UI elements using slots and signals
+        self.pushButton.clicked.connect(self.back_to_menu)
+
+        self.label.setText("To contact the developer via email or GitHub,\n"
+                           "please use the following links:")
+
+        # provide link to email
+        self.label_2.setOpenExternalLinks(True)
+        self.label_2.setText(
+            "<a href=paulsirri@gmail.com>paulsirri@gmail.com</a>")
+
+        # provide link to GitHub
+        self.label_3.setOpenExternalLinks(True)
+        self.label_3.setText(
+            "<a href=https://github.com/PARSE-team/PARSE>https://github.com/PARSE-team/PARSE</a>")
+
+    def back_to_menu(self):
+        self.start_window = StartWindow(self.ctx)
+        self.start_window.show()
+        self.close()
+
+
+class SourceCodeWindow(QMainWindow, About_Ui):
+    def __init__(self, ctx, *args, **kwargs):
+        super(SourceCodeWindow, self).__init__(*args, **kwargs)
+        self.ctx = ctx
+        self.setupUi(self)
+
+        # set the title
+        self.setWindowTitle("PARSE  Source Code")
+
+        # connect UI elements using slots and signals
+        self.pushButton.clicked.connect(self.back_to_menu)
+
+        self.label.setText("To view source code or learn more about PARSE,\n"
+                           "please visit the project's official GitHub page:")
+
+        # provide link to GitHub
+        self.label_2.setOpenExternalLinks(True)
+        self.label_2.setText(
+            "<a href=https://github.com/PARSE-team/PARSE>https://github.com/PARSE-team/PARSE</a>")
+
+        self.label_3.setText("")
+
+    def back_to_menu(self):
+        self.start_window = StartWindow(self.ctx)
+        self.start_window.show()
+        self.close()
 
 
 class FileWindow(QMainWindow, File_Ui):
