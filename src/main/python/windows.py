@@ -38,8 +38,8 @@ from ui.ui_20210129.glucokeep_about import Ui_MainWindow as About_Ui
 from read_data import find_polar_pair, file_to_numpy, get_iq_data, get_files, get_sample_rate, \
     strftime_DOY, strftime_hhmmss, strftime_yyyyDOYhhmmss, strftime_yyyyDOYhhmmssff, \
     strftime_yyyyDOY, strftime_timestamp, get_polar_compliment
-from process_signal import get_settings
-from analyze_plot import analyze_plot
+from signal_processing import get_signal_processing_parameters
+from spectral_analysis import get_spectral_analysis_results
 from astropy.time import Time, TimeDelta
 import numpy as np
 import time
@@ -426,11 +426,11 @@ class SignalWindow(QMainWindow, Signal_Ui):
         toolbar = NavigationToolbar(self.animation_widget, self)
         self.vlayout_right.insertWidget(2, toolbar)
 
-        # Create a WorkerDataIngestion object and a thread
+        # create a WorkerDataIngestion object and a thread
         self.worker_dataingestion = WorkerDataIngestion()
         self.worker_dataingestion_thread = QtCore.QThread()
 
-        # Assign the worker_dataingestion to the thread and start the thread
+        # assign the worker_dataingestion to the thread and start the thread
         self.worker_dataingestion.moveToThread(self.worker_dataingestion_thread)
         self.worker_dataingestion_thread.start()
 
@@ -440,19 +440,8 @@ class SignalWindow(QMainWindow, Signal_Ui):
         # self.progress_window.raise_()
         # self.progress_window.activateWindow()
 
-        # Connect signals & slots AFTER moving the object to the thread
-        # todo: make a method connect_signals_to_slots()
-        # connect worker_dataingestion.signal_to_return_data (signal) to self.receive_data_from_worker (slot)
-        self.worker_dataingestion.signal_to_return_data.connect(self.receive_data_from_worker)
-        # connect worker_dataingestion.signal_progress_changed (signal) to self.progress_window.receive_progress (slot)
-        self.worker_dataingestion.signal_progress_changed.connect(
-            self.progress_window.receive_progress)
-        # connect self.signal_to_run_worker (signal) to worker_dataingestion.run (slot)
-        self.signal_to_run_worker.connect(self.worker_dataingestion.run)
-        # connect self.signal_to_plot_analysis_results (signal) to self.animation_widget.plot_analysis_results (slot)
-        self.signal_to_plot_analysis_results.connect(self.animation_widget.plot_analysis_results)
-        # connect self.signal_to_hide_analysis_results (signal) to self.animation_widget.plot_analysis_results (slot)
-        self.signal_to_hide_analysis_results.connect(self.animation_widget.hide_analysis_results)
+        # connect signals to slots AFTER moving the object to the thread
+        self.connect_signals_to_slots()
 
         # save current source
         self.source = source
@@ -477,19 +466,7 @@ class SignalWindow(QMainWindow, Signal_Ui):
         # worker thread processes and returns plotting/animation data
         self.signal_to_run_worker.emit(self.rcp_file, self.lcp_file)
 
-        # connect buttons for general interface
-        self.btn_back.clicked.connect(self.back_to_files)
-        self.btn_apply_changes.clicked.connect(self.apply_changes)
-        self.btn_refresh_plot.clicked.connect(self.apply_changes_plot_analysis)
-        self.tab_widget.currentChanged.connect(self.toggle_results)
-        # connect buttons that control animation playback
-        self.btn_play.clicked.connect(self.play_animation)
-        self.btn_pause.clicked.connect(self.pause_animation)
-        self.btn_prev_frame.clicked.connect(self.animation_widget.show_previous_frame)
-        self.btn_prev_frame.clicked.connect(self.pause_animation)
-        self.btn_next_frame.clicked.connect(self.animation_widget.show_next_frame)
-        self.btn_next_frame.clicked.connect(self.pause_animation)
-        # todo: connect export button self.btn_export.clicked.connect(self.function)
+
 
     def show_parameters(self, s):
         """ A method to set the value of each QSpinBox widget on the Signal Processing tab. """
@@ -566,7 +543,7 @@ class SignalWindow(QMainWindow, Signal_Ui):
 
     def apply_changes(self):
         """ A method to read the user input parameters from QSpinBox widgets on
-        the Signal Processing tab, generate a new ProgramSettings object, then pass
+        the Signal Processing tab, generate a new SignalProcessing object, then pass
         these new settings into the animation widget for plotting.
 
         NOTE: Some of the values had to be rounded when they were initially printed
@@ -579,8 +556,6 @@ class SignalWindow(QMainWindow, Signal_Ui):
         new_value_in_code = ( new_value_in_GUI - old_value_in_GUI ) + old_value_in_code
 
         """
-
-        print('\n\n---------------------------------------\n\nSignalAnalysis.apply_changes()\n\n')
 
         # signals to stop generating old plots
         self.animation_widget.pause_worker()
@@ -662,30 +637,31 @@ class SignalWindow(QMainWindow, Signal_Ui):
         frames_per_second = self.spin_ani_speed.value()
         interval = round(1000 / frames_per_second)
 
-        # make new version of ProgramSettings
+        # make new instance of SignalProcessing
         # get all parameters for radar analysis pipeline, using RCP file to set default values
-        new_settings = get_settings(filenames=(self.rcp_file.file_name, self.lcp_file.file_name),
-                                    rcp_data=self.rcp_data,
-                                    lcp_data=self.lcp_data,
-                                    sample_rate=self.sample_rate,
-                                    band_name=self.rcp_file.band_name,
-                                    global_time=self.rcp_file.start_time,
-                                    target=target, mission=mission,
-                                    dt_occ=dt_occ, radius_target=radius_target,
-                                    v_sc_orbital=v_sc_orbital, altitude_sc=altitude_sc,
-                                    df_calc=None, freq_res=freq_res,
-                                    samples_per_raw_fft=None, seconds_per_raw_fft=None,
-                                    raw_fft_per_average=raw_fft_per_average,
-                                    seconds_for_welch_user=seconds_for_welch_user,
-                                    percent_window_per_hop=percent_window_per_hop,
-                                    seconds_per_hop=None,
-                                    xlim_min=xlim_min, xlim_max=xlim_max,
-                                    ylim_min=ylim_min, ylim_max=ylim_max,
-                                    start_sec_user=start_sec_user, interval=interval,
-                                    file_start_time=self.rcp_file.start_time,
-                                    file_end_time=self.rcp_file.stop_time,
-                                    did_calculate_overview=True,
-                                    old_settings=self.current_settings)
+        new_settings = get_signal_processing_parameters(
+            filenames=(self.rcp_file.file_name, self.lcp_file.file_name),
+            rcp_data=self.rcp_data,
+            lcp_data=self.lcp_data,
+            sample_rate=self.sample_rate,
+            band_name=self.rcp_file.band_name,
+            global_time=self.rcp_file.start_time,
+            target=target, mission=mission,
+            dt_occ=dt_occ, radius_target=radius_target,
+            v_sc_orbital=v_sc_orbital, altitude_sc=altitude_sc,
+            df_calc=None, freq_res=freq_res,
+            samples_per_raw_fft=None, seconds_per_raw_fft=None,
+            raw_fft_per_average=raw_fft_per_average,
+            seconds_for_welch_user=seconds_for_welch_user,
+            percent_window_per_hop=percent_window_per_hop,
+            seconds_per_hop=None,
+            xlim_min=xlim_min, xlim_max=xlim_max,
+            ylim_min=ylim_min, ylim_max=ylim_max,
+            start_sec_user=start_sec_user, interval=interval,
+            file_start_time=self.rcp_file.start_time,
+            file_end_time=self.rcp_file.stop_time,
+            did_calculate_overview=True,
+            old_settings=self.current_settings)
 
         # keep track of current settings
         self.current_settings = new_settings
@@ -725,7 +701,7 @@ class SignalWindow(QMainWindow, Signal_Ui):
 
     def apply_changes_plot_analysis(self):
         """ A method to read the user input parameters from QSpinBox widgets
-        on the Signal Analysis tab, generate a new SignalAnalysis object, then
+        on the Signal Analysis tab, generate a new SpectralAnalysis object, then
         pass these results into the animation widget. """
 
         NdB_below = int(round(self.spin_measure_bandwidth_below.value()))
@@ -733,14 +709,14 @@ class SignalWindow(QMainWindow, Signal_Ui):
         freq_local_max = int(round(self.spin_x_max.value()))
 
         # get measurements for plot analysis, using data from RCP file
-        msmt = analyze_plot(s=self.animation_widget.s,
-                            freqs=self.animation_widget.plots[self.animation_widget.frame_index][0],
-                            Pxx=self.animation_widget.plots[self.animation_widget.frame_index][1],
-                            freqs_LCP=self.animation_widget.plots[self.animation_widget.frame_index][2],
-                            Pxx_LCP=self.animation_widget.plots[self.animation_widget.frame_index][3],
-                            NdB_below=NdB_below,
-                            freq_local_min=freq_local_min,
-                            freq_local_max=freq_local_max)
+        msmt = get_spectral_analysis_results(
+            s=self.animation_widget.s,
+            freqs=self.animation_widget.plots[self.animation_widget.frame_index][0],
+            Pxx=self.animation_widget.plots[self.animation_widget.frame_index][1],
+            freqs_LCP=self.animation_widget.plots[self.animation_widget.frame_index][2],
+            Pxx_LCP=self.animation_widget.plots[self.animation_widget.frame_index][3],
+            NdB_below=NdB_below, freq_local_min=freq_local_min,
+            freq_local_max=freq_local_max)
 
         self.msmt = msmt
 
@@ -754,7 +730,8 @@ class SignalWindow(QMainWindow, Signal_Ui):
         if msmt.error_direct_signal:
             is_calculated = False
             self.show_error_message(
-                'Warning: local max may not be a signal; detectability limit is >= 3 dB above the noise.')
+                'Warning: local max may not be a signal; '
+                'detectability limit is >= 3 dB above the noise.')
         if msmt.error_finding_bandwidth:
             is_calculated = False
             self.show_error_message('Error: Unable to detect the bandwidth of the specified peak.')
@@ -765,20 +742,15 @@ class SignalWindow(QMainWindow, Signal_Ui):
         print("\nSignalWindow.toggle_results()\n")
         if self.tab_widget.currentIndex() == 1:
             # get measurements for plot analysis using data from current RCP frame, use defaults
-            msmt = analyze_plot(s=self.animation_widget.s,
-                                freqs=
-                                self.animation_widget.plots[self.animation_widget.frame_index][0],
-                                Pxx=self.animation_widget.plots[self.animation_widget.frame_index][
-                                    1],
-                                freqs_LCP=
-                                self.animation_widget.plots[self.animation_widget.frame_index][2],
-                                Pxx_LCP=self.animation_widget.plots[self.animation_widget.frame_index][
-                                    3])
-
-            self.msmt = msmt
+            self.msmt = get_spectral_analysis_results(
+                s=self.animation_widget.s,
+                freqs=self.animation_widget.plots[self.animation_widget.frame_index][0],
+                Pxx=self.animation_widget.plots[self.animation_widget.frame_index][1],
+                freqs_LCP=self.animation_widget.plots[self.animation_widget.frame_index][2],
+                Pxx_LCP=self.animation_widget.plots[self.animation_widget.frame_index][3])
 
             # print values to QSpinBoxes on Signal Analysis tab
-            self.show_parameters_plot_analysis(msmt)
+            self.show_parameters_plot_analysis(self.msmt)
 
             # provide error messages to help user diagnose issues
             is_calculated = True
@@ -788,7 +760,8 @@ class SignalWindow(QMainWindow, Signal_Ui):
             if self.msmt.error_direct_signal:
                 is_calculated = False
                 self.show_error_message(
-                    'Warning: local max may not be a signal; detectability limit is >= 3 dB above the noise.')
+                    'Warning: local max may not be a signal; '
+                    'detectability limit is >= 3 dB above the noise.')
             if self.msmt.error_finding_bandwidth:
                 is_calculated = False
                 self.show_error_message(
@@ -869,10 +842,36 @@ class SignalWindow(QMainWindow, Signal_Ui):
         return time_as_pyqt
 
     def set_min_and_max_limits(self):
-        """maximum_seconds = np.floor((self.rcp_file.stop_time - self.rcp_file.start_time).to_value('sec') - self.current_settings.seconds_for_welch)
+        """maximum_seconds = np.floor((self.rcp_file.stop_time
+                                    - self.rcp_file.start_time).to_value('sec')
+                                   - self.current_settings.seconds_for_welch)
         maximum_seconds = TimeDelta(maximum_seconds, format='sec')
         max_datetime = (self.rcp_file.start_time + maximum_seconds).strf('')"""
         pass
+
+    def connect_signals_to_slots(self):
+        """ A method to setup all PyQt5 signals/slot connections for this window during init. """
+
+        # connect main thread and worker thread
+        # connect the worker signals/slots AFTER moving worker object to thread (see init method)
+        self.worker_dataingestion.signal_to_return_data.connect(self.receive_data_from_worker)
+        self.worker_dataingestion.signal_progress.connect(self.progress_window.receive_progress)
+        self.signal_to_run_worker.connect(self.worker_dataingestion.run)
+        # connect buttons for general interface
+        self.btn_back.clicked.connect(self.back_to_files)
+        self.btn_apply_changes.clicked.connect(self.apply_changes)
+        self.btn_refresh_plot.clicked.connect(self.apply_changes_plot_analysis)
+        self.tab_widget.currentChanged.connect(self.toggle_results)
+        self.signal_to_plot_analysis_results.connect(self.animation_widget.plot_analysis_results)
+        self.signal_to_hide_analysis_results.connect(self.animation_widget.hide_analysis_results)
+        # connect buttons that control animation playback
+        self.btn_play.clicked.connect(self.play_animation)
+        self.btn_pause.clicked.connect(self.pause_animation)
+        self.btn_prev_frame.clicked.connect(self.animation_widget.show_previous_frame)
+        self.btn_prev_frame.clicked.connect(self.pause_animation)
+        self.btn_next_frame.clicked.connect(self.animation_widget.show_next_frame)
+        self.btn_next_frame.clicked.connect(self.pause_animation)
+        # todo: connect export button self.btn_export.clicked.connect(self.function)
 
     @QtCore.pyqtSlot(object)
     def receive_data_from_worker(self, data_tuple):
@@ -903,7 +902,7 @@ class WorkerDataIngestion(QtCore.QObject):
     """ A class that functions as a worker, generating plots from a separate thread. """
 
     signal_to_return_data = QtCore.pyqtSignal(object)
-    signal_progress_changed = QtCore.pyqtSignal(int)
+    signal_progress = QtCore.pyqtSignal(int)
 
     def __init__(self, parent=None):
         # QtCore.QObject.__init__(self, parent=parent)
@@ -914,37 +913,38 @@ class WorkerDataIngestion(QtCore.QObject):
 
         # read data files into Numpy
         rcp_processed = file_to_numpy(rcp_file)
-        self.signal_progress_changed.emit(10)
+        self.signal_progress.emit(10)
         lcp_processed = file_to_numpy(lcp_file)
-        self.signal_progress_changed.emit(20)
+        self.signal_progress.emit(20)
 
         # isolate IQ data from processed file
         rcp_data = get_iq_data(rcp_processed, rcp_file.mission)
-        self.signal_progress_changed.emit(40)
+        self.signal_progress.emit(40)
 
         lcp_data = get_iq_data(lcp_processed, lcp_file.mission)
-        self.signal_progress_changed.emit(60)
+        self.signal_progress.emit(60)
 
         # get the sample rate of the data file
         sample_rate = get_sample_rate(rcp_processed, rcp_file.mission)
-        self.signal_progress_changed.emit(70)
+        self.signal_progress.emit(70)
 
         # get all parameters for radar analysis pipeline, using RCP file to set default values
-        s = get_settings(filenames=(rcp_file.file_name, lcp_file.file_name),
-                         rcp_data=rcp_data,
-                         lcp_data=lcp_data,
-                         sample_rate=sample_rate,
-                         band_name=rcp_file.band_name,
-                         global_time=rcp_file.start_time,
-                         mission=rcp_file.mission,
-                         file_start_time=rcp_file.start_time,
-                         file_end_time=rcp_file.stop_time,
-                         did_calculate_overview=False)
+        s = get_signal_processing_parameters(
+            filenames=(rcp_file.file_name, lcp_file.file_name),
+            rcp_data=rcp_data,
+            lcp_data=lcp_data,
+            sample_rate=sample_rate,
+            band_name=rcp_file.band_name,
+            global_time=rcp_file.start_time,
+            mission=rcp_file.mission,
+            file_start_time=rcp_file.start_time,
+            file_end_time=rcp_file.stop_time,
+            did_calculate_overview=False)
 
         # include a split second delay to show the user the progress has finished
-        self.signal_progress_changed.emit(95)
+        self.signal_progress.emit(95)
         time.sleep(0.20)
-        self.signal_progress_changed.emit(100)
+        self.signal_progress.emit(100)
         time.sleep(0.15)
 
         self.signal_to_return_data.emit((rcp_processed, lcp_processed, rcp_data, lcp_data,

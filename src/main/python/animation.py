@@ -34,7 +34,7 @@ import numpy as np
 import time
 import copy
 from astropy.time import Time, TimeDelta
-from process_signal import get_psd
+from signal_processing import get_psd
 from read_data import strftime_yyyyDOYhhmmssff, astropy_to_python, \
     strftime_DOY, strftime_hhmmss, strftime_yyyyDOYhhmmss, strftime_yyyyDOY
 
@@ -99,7 +99,7 @@ class WorkerDataGenerator(QtCore.QObject):
             self.update_counters()
 
             return rcp_x, rcp_y, lcp_x, lcp_y, files_label, time_label, current_index, \
-                   current_second
+                current_second
 
     def update_counters(self):
         """ A method that updates counters used to generate each frame. """
@@ -355,7 +355,7 @@ class BSRAnimation(FigureCanvas):
                     # can only rewind to the first data plot
                     self.frame_index -= 1
                     rcp_x, rcp_y, lcp_x, lcp_y, files_label, time_label, current_index, \
-                    current_second = self.plots[self.frame_index]
+                        current_second = self.plots[self.frame_index]
                 else:
                     print('cannot rewind further')
             elif plot_next_frame:
@@ -368,11 +368,11 @@ class BSRAnimation(FigureCanvas):
                     # there are plots in queue
                     self.frame_index += 1
                     rcp_x, rcp_y, lcp_x, lcp_y, files_label, time_label, current_index, \
-                    current_second = self.plots[self.frame_index]
+                        current_second = self.plots[self.frame_index]
             elif repeat:
                 # plot the same frame, without updating any counters
                 rcp_x, rcp_y, lcp_x, lcp_y, files_label, time_label, current_index, \
-                current_second = self.plots[self.frame_index]
+                    current_second = self.plots[self.frame_index]
             elif self.plots:
                 # samples remaining in file, draw next plot in queue or setup initial empty figure
                 # save recent plots so the user can rewind if needed
@@ -381,7 +381,7 @@ class BSRAnimation(FigureCanvas):
 
                 # worker_datagen thread has queued a plot, unpack result
                 rcp_x, rcp_y, lcp_x, lcp_y, files_label, time_label, current_index, \
-                current_second = self.plots[self.frame_index]
+                    current_second = self.plots[self.frame_index]
 
             elif not self.was_setup:
                 # FIXME: what's the point of having an initial empty frame?
@@ -394,7 +394,8 @@ class BSRAnimation(FigureCanvas):
 
                 start = self.s.file_start_time + TimeDelta(self.s.start_sec_user, format='sec')
                 time_label = 'From: ' + strftime_yyyyDOYhhmmssff(start) \
-                             + '\nTo:   ' + strftime_yyyyDOYhhmmssff(start + TimeDelta(self.s.seconds_for_welch, format='sec'))
+                             + '\nTo:   ' + strftime_yyyyDOYhhmmssff(
+                    start + TimeDelta(self.s.seconds_for_welch, format='sec'))
 
                 files_label = 'RCP file: ' + self.s.filenames[0] + '\nLCP file: ' + \
                               self.s.filenames[1]
@@ -485,14 +486,13 @@ class BSRAnimation(FigureCanvas):
             self.overview_plot.xaxis.set_minor_formatter(ticker.FuncFormatter(format_date_minor))
 
             # x-axis tick locators
-            self.overview_plot.xaxis.set_major_locator(mdates.DayLocator(interval=1))
-            self.overview_plot.xaxis.set_minor_locator(mdates.AutoDateLocator(interval_multiples=True))
+            self.overview_plot.xaxis.set_major_locator(mdates.DayLocator(interval=1))  # each day
+            self.overview_plot.xaxis.set_minor_locator(
+                mdates.AutoDateLocator(interval_multiples=True))  # auto-select convenient interval
 
             # x-axis tick parameters
             self.overview_plot.tick_params(axis='x', which='minor', rotation=30)
-            self.overview_plot.tick_params(axis='x', which='major', pad=35, length=5)
-            # self.overview_plot.tick_params(which='major', width=1.00, length=5)
-            # self.overview_plot.tick_params(which='minor', width=0.75, length=2.5, labelsize=10)
+            self.overview_plot.tick_params(axis='x', which='major', pad=35, length=7)
 
             # mark current frame's location in the time series
             self.overview_plot.axvline(x=matplotlib.dates.date2num(astropy_to_python(

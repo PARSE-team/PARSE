@@ -1,5 +1,5 @@
 """
-analyze_plot.py -- Generates results for the Spectral Analysis tab.
+spectral_analysis.py -- Generates results for the Spectral Analysis tab.
 Copyright (C) 2021  Paul Sirri <paulsirri@gmail.com>
 
 This program is free software: you can redistribute it and/or modify
@@ -24,7 +24,7 @@ from scipy import signal
 import copy
 
 
-class SignalAnalysis:
+class SpectralAnalysis:
 
     def __init__(self):
         # Analysis Settings
@@ -96,8 +96,8 @@ def set_value(value, default):
 
 
 # screen4results_v1.py
-def analyze_plot(s, freqs, Pxx, freqs_LCP, Pxx_LCP, NdB_below=None, freq_local_min=None,
-                 freq_local_max=None):
+def get_spectral_analysis_results(s, freqs, Pxx, freqs_LCP, Pxx_LCP, NdB_below=None,
+                                  freq_local_min=None,freq_local_max=None):
     """
     A function that generates all results for the Signal Analysis pipeline.
 
@@ -116,7 +116,7 @@ def analyze_plot(s, freqs, Pxx, freqs_LCP, Pxx_LCP, NdB_below=None, freq_local_m
 
     # save signal analysis results to object, which is passed between functions
     # “msmt” is shorthand for “measurement” of the signal characteristics:
-    msmt = SignalAnalysis()
+    msmt = SpectralAnalysis()
 
     # ----- Analysis Settings -----
 

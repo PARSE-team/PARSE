@@ -1,5 +1,5 @@
 """
-process_signal.py -- Generates results for the Signal Processing tab.
+signal_processing.py -- Generates results for the Signal Processing tab.
 Copyright (C) 2021  Paul Sirri <paulsirri@gmail.com>
 
 This program is free software: you can redistribute it and/or modify
@@ -25,7 +25,7 @@ import math
 from scipy.constants import speed_of_light
 
 
-class ProgramSettings:
+class SignalProcessing:
     """ A class that stores the user settings for running the animation. """
 
     def __init__(self):
@@ -102,7 +102,7 @@ def round_to_nearest_n(x, n):
 
 
 def get_psd(data, sample_rate, samples_per_raw_fft, noverlap):
-    """ A function that performs a series of mathematical operations
+    """ A core function that performs a series of mathematical operations
     on a subset of raw IQ data, then returns an x-axis and y-axis. """
 
     # First remove the DC offset (i.e., the mean value or vertical offset)
@@ -115,10 +115,7 @@ def get_psd(data, sample_rate, samples_per_raw_fft, noverlap):
     data.imag = data.imag - np.mean(data.imag)
 
     # PSD: power spectral density plot
-    psd_frame = psd(data,
-                    Fs=sample_rate,
-                    NFFT=samples_per_raw_fft,
-                    noverlap=noverlap)
+    psd_frame = psd(data, Fs=sample_rate, NFFT=samples_per_raw_fft, noverlap=noverlap)
 
     # unpack into separate arrays, performing simple operations on y-values
     x_data = psd_frame[1]
@@ -134,8 +131,26 @@ def get_psd(data, sample_rate, samples_per_raw_fft, noverlap):
     return x_data, y_data
 
 
-def signal_overview(rcp_data, lcp_data, samples_for_welch, sample_rate, samples_per_raw_fft,
-                    noverlap, samples_per_hop, mission, rate=25):
+def get_signal_overview(rcp_data, lcp_data, samples_for_welch, sample_rate, samples_per_raw_fft,
+                        noverlap, samples_per_hop, mission, rate=25):
+    """
+    The "signal overview plot" displays the power (dB) of the direct signal over
+    the entire timeseries, so the user can easily identify when an occultation
+    occurs. Generate this "signal overview plot" by iterating over the entire dataset,
+    generating PSD plots just like the main animation pipeline is preparing to do (see
+    BSRAnimation's use of the get_psd() function). The process of generating a series
+    of PSD plots for the entire dataset is extremely computationally intensive and
+    takes a minimum of several minutes on high-performance computers. To reduce the
+    function's runtime, the "hop" between each PSD plot is multiplied by 25. This
+    significantly reduces the runtime (by a factor of 25) so that the window setup
+    process should only take about 10-30 seconds. The results and key intermediate
+    components of this pipeline are static for each dataset, so they are passed from
+    one SignalProcessing instance to another, whenever the user chooses to update
+    processing parameters. Only run this pipeline during the initial window setup.
+    To adjust the resolution of the signal overview plot, set the "rate" parameter
+    when calling the get_signal_overview() function.
+    """
+
     ##############################
     # Signal Overview Calculation
     ##############################
@@ -150,10 +165,10 @@ def signal_overview(rcp_data, lcp_data, samples_for_welch, sample_rate, samples_
 
     while stop_i < rcp_data.size:
         # generate RCP and LCP data for plotting each frame
-        rcp_x, rcp_y = get_psd(rcp_data[start_i:stop_i], sample_rate, samples_per_raw_fft,
-                               noverlap)
-        lcp_x, lcp_y = get_psd(lcp_data[start_i:stop_i], sample_rate, samples_per_raw_fft,
-                               noverlap)
+        rcp_x, rcp_y = get_psd(
+            rcp_data[start_i:stop_i], sample_rate, samples_per_raw_fft, noverlap)
+        lcp_x, lcp_y = get_psd(
+            lcp_data[start_i:stop_i], sample_rate, samples_per_raw_fft, noverlap)
 
         # find direct signal
         if mission == 'Rosetta':
@@ -259,24 +274,25 @@ def set_value(value, default):
         return default
 
 
-def get_settings(filenames=None,
-                 rcp_data=None,
-                 lcp_data=None,
-                 sample_rate=None,
-                 band_name=None,
-                 global_time=None,
-                 target=None, mission=None,
-                 dt_occ=None, radius_target=None,
-                 v_sc_orbital=None, altitude_sc=None,
-                 df_calc=None, freq_res=None,
-                 samples_per_raw_fft=None, seconds_per_raw_fft=None,
-                 raw_fft_per_average=None, seconds_for_welch_user=None,
-                 percent_window_per_hop=None, seconds_per_hop=None,
-                 xlim_min=None, xlim_max=None,
-                 ylim_min=None, ylim_max=None,
-                 start_sec_user=None, interval=None,
-                 file_start_time=None, file_end_time=None,
-                 window=None, did_calculate_overview=False, old_settings=None):
+def get_signal_processing_parameters(filenames=None,
+                                     rcp_data=None,
+                                     lcp_data=None,
+                                     sample_rate=None,
+                                     band_name=None,
+                                     global_time=None,
+                                     target=None, mission=None,
+                                     dt_occ=None, radius_target=None,
+                                     v_sc_orbital=None, altitude_sc=None,
+                                     df_calc=None, freq_res=None,
+                                     samples_per_raw_fft=None, seconds_per_raw_fft=None,
+                                     raw_fft_per_average=None, seconds_for_welch_user=None,
+                                     percent_window_per_hop=None, seconds_per_hop=None,
+                                     xlim_min=None, xlim_max=None,
+                                     ylim_min=None, ylim_max=None,
+                                     start_sec_user=None, interval=None,
+                                     file_start_time=None, file_end_time=None,
+                                     window=None,
+                                     did_calculate_overview=False, old_settings=None):
     """ A function that generates all parameters for the Signal Processing pipeline.
 
     NOTATIONS:
@@ -307,7 +323,7 @@ def get_settings(filenames=None,
     #######################
 
     # save settings to object, which is passed between functions
-    s = ProgramSettings()
+    s = SignalProcessing()
 
     # set metadata
     s.filenames = filenames
@@ -370,7 +386,7 @@ def get_settings(filenames=None,
     # aka the differential Doppler shift (df)
     theta_sc_orbital_phase = (s.v_sc_orbital * s.dt_occ) / (2 * (s.radius_target + s.altitude_sc))
     theta_tilt = np.arccos((s.radius_target - (s.v_sc_orbital * s.dt_occ / (2 * math.pi)))
-                       / (s.radius_target + s.altitude_sc))
+                           / (s.radius_target + s.altitude_sc))
 
     # Display name in GUI: “Calc. freq. separation (Hz)”   # TODO: adjustable
     s.df_calc = (s.v_sc_orbital / wavelength) * np.sin(theta_sc_orbital_phase) * abs(
@@ -456,7 +472,8 @@ def get_settings(filenames=None,
     #   (K - 1) = (seconds_for_welch - L)/D
     # >> K = 1 + ((seconds_for_welch - L)/D)
     if seconds_for_welch_user:
-        s.raw_fft_per_average = int(np.rint(1 + (seconds_for_welch_user - s.seconds_per_raw_fft) / s.seconds_per_hop))
+        s.raw_fft_per_average = int(np.rint(
+            1 + (seconds_for_welch_user - s.seconds_per_raw_fft) / s.seconds_per_hop))
 
     # >> Example: The user wants approx. 5 seconds to be the timespan per plot. If each raw FFT
     # spans 2.25 seconds (L), and each hop-size is 1 second (D), then working backwards,
@@ -479,7 +496,8 @@ def get_settings(filenames=None,
     # Display name in GUI: “Timespan per plot (sec)”
     s.seconds_for_welch = s.seconds_per_raw_fft + s.seconds_per_hop * (s.raw_fft_per_average - 1)
     # convert to samples
-    s.samples_for_welch = int(s.samples_per_raw_fft + s.samples_per_hop * (s.raw_fft_per_average - 1))
+    s.samples_for_welch = int(
+        s.samples_per_raw_fft + s.samples_per_hop * (s.raw_fft_per_average - 1))
 
     # number of samples of overlap between segments
     s.noverlap = s.samples_per_raw_fft - s.samples_per_hop
@@ -511,17 +529,37 @@ def get_settings(filenames=None,
     # Generating Signal Overview Plot
     ###################################
 
-    # only generate an overview plot once per dataset
+    """ 
+    The "signal overview plot" displays the power (dB) of the direct signal over 
+    the entire timeseries, so the user can easily identify when an occultation 
+    occurs. Generate this "signal overview plot" by iterating over the entire dataset, 
+    generating PSD plots just like the main animation pipeline is preparing to do (see 
+    BSRAnimation's use of the get_psd() function). The process of generating a series 
+    of PSD plots for the entire dataset is extremely computationally intensive and 
+    takes a minimum of several minutes on high-performance computers. To reduce the 
+    function's runtime, the "hop" between each PSD plot is multiplied by 25. This 
+    significantly reduces the runtime (by a factor of 25) so that the window setup 
+    process should only take about 10-30 seconds. The results and key intermediate 
+    components of this pipeline are static for each dataset, so they are passed from 
+    one SignalProcessing instance to another, whenever the user chooses to update 
+    processing parameters. Only run this pipeline during the initial window setup. 
+    To adjust the resolution of the signal overview plot, set the "rate" parameter 
+    when calling the get_signal_overview() function. 
+    """
+
+    # only generate overview plot once per dataset, during the initial setup for signal window
     if not did_calculate_overview:
         # get an overview of the direct signal over time, used for plotting
-        overview = signal_overview(rcp_data, lcp_data, s.samples_for_welch, s.sample_rate,
-                                   s.samples_per_raw_fft, s.noverlap, s.samples_per_hop, s.mission)
+        overview = get_signal_overview(rcp_data, lcp_data, s.samples_for_welch,
+                                       s.sample_rate, s.samples_per_raw_fft,
+                                       s.noverlap, s.samples_per_hop, s.mission)
         s.overview_pxx = overview[0]
         s.overview_freqs = overview[1]
         s.overview_seconds = overview[2]
         s.pxx_min = overview[3]
         s.pxx_max = overview[4]
     else:
+        # window was already setup and user is just adjusting parameters, reuse same overview plot
         copy_overview_data(old_settings=old_settings, new_settings=s)
 
     ##############################
