@@ -1,6 +1,6 @@
 """
 process_signal.py -- Generates results for the Signal Processing tab.
-Copyright (C) 2020  Paul Sirri <paulsirri@gmail.com>
+Copyright (C) 2021  Paul Sirri <paulsirri@gmail.com>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -17,11 +17,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 # File Description:
-# Generates results for the Signal Processing tab.
+# This file contains functions to generate parameters for the Signal Processing pipeline.
 
 import numpy as np
 from matplotlib.mlab import psd
-# from matplotlib.pyplot import psd
 import math
 from scipy.constants import speed_of_light
 
@@ -30,8 +29,7 @@ class ProgramSettings:
     """ A class that stores the user settings for running the animation. """
 
     def __init__(self):
-        # TODO: write a description of each setting
-        # by order in which they appear in get_settings()
+        """ Please see the User's Guide for descriptions of each Signal Processing parameter. """
 
         # RCP and LCP filenames
         self.filenames = None
@@ -87,9 +85,8 @@ class ProgramSettings:
         self.overview_seconds = None
         self.overview_pxx = None
         self.overview_freqs = None
-        self.overview_seconds = None
-        self.ppx_min = None
-        self.ppx_max = None
+        self.pxx_min = None
+        self.pxx_max = None
 
         # Acquisition Geometry
         self.target = None
@@ -98,30 +95,6 @@ class ProgramSettings:
         self.radius_target = None
         self.v_sc_orbital = None
         self.altitude_sc = None
-
-    def print_debug(self, flag):
-        print('\n\nDEBUG ' + flag)
-        print('df_calc:                           ', self.df_calc)
-        print('dt_occ:                            ', self.dt_occ)
-        print('sample_rate:                       ', self.sample_rate)
-        # the old value was probably near 320000?
-        print('samples_per_raw_fft:               ', self.samples_per_raw_fft)
-        # the old value was 20, hardcoded
-        print('seconds_per_raw_fft:               ', self.seconds_per_raw_fft)
-        # should be less than 1
-        print('freq_res:                          ', self.freq_res)
-        # old value was 5
-        print('seconds_per_hop:                   ', self.seconds_per_hop)
-        # the old value was 30, now it's hardcoded as 2
-        # we can hardcode this as 30 and see if that helps!
-        print('raw_fft_per_average:               ', self.raw_fft_per_average)
-        # old hardcoded value was 600
-        print('seconds_for_welch:                 ', self.seconds_for_welch)
-
-        print('freq_plot_center:                  ', self.freq_plot_center)
-
-        print()
-        print()
 
 
 def round_to_nearest_n(x, n):
@@ -151,7 +124,6 @@ def get_psd(data, sample_rate, samples_per_raw_fft, noverlap):
     x_data = psd_frame[1]
     y_data = 10 * np.log10(psd_frame[0])
 
-    # TODO: check that "concatenate" isn't creating a multidimensional array
     # subtract the noise from the plot
     noise_index_1 = np.where((x_data > -400) & (x_data < -200))
     noise_index_2 = np.where((x_data > 200) & (x_data < 400))
@@ -168,17 +140,14 @@ def signal_overview(rcp_data, lcp_data, samples_for_welch, sample_rate, samples_
     # Signal Overview Calculation
     ##############################
 
-    print('signal_overview()')
-
     # find the duration and frequency of the direct signal in file
     start_i = 0
     stop_i = samples_for_welch
     overview_seconds = []
     overview_pxx = []
     overview_freqs = []
-    ppx_min = 0
+    pxx_min = 0
 
-    print('indexes of first psd: [ ' + str(start_i) + ' : ' + str(stop_i) + ' ]\n')
     while stop_i < rcp_data.size:
         # generate RCP and LCP data for plotting each frame
         rcp_x, rcp_y = get_psd(rcp_data[start_i:stop_i], sample_rate, samples_per_raw_fft,
@@ -214,8 +183,8 @@ def signal_overview(rcp_data, lcp_data, samples_for_welch, sample_rate, samples_
 
         # find minimum signal
         min_signal = np.min([np.min(rcp_y), np.min(lcp_y)])
-        if min_signal < ppx_min:
-            ppx_min = min_signal
+        if min_signal < pxx_min:
+            pxx_min = min_signal
 
         overview_seconds.append(start_i / sample_rate)
         overview_pxx.append(max_signal)
@@ -225,7 +194,7 @@ def signal_overview(rcp_data, lcp_data, samples_for_welch, sample_rate, samples_
         stop_i += samples_per_hop * rate
 
     # store these in the program settings
-    return overview_pxx, overview_freqs, overview_seconds, ppx_min, np.max(overview_pxx)
+    return overview_pxx, overview_freqs, overview_seconds, pxx_min, np.max(overview_pxx)
 
 
 def get_freq_plot_center(overview_freqs, overview_pxx, mission):
@@ -236,7 +205,7 @@ def get_freq_plot_center(overview_freqs, overview_pxx, mission):
 
     ind = np.argmax(overview_pxx)
     freq_plot_center = overview_freqs[ind]
-    if overview_pxx[ind] < 9:
+    if overview_pxx[ind] < 25:
         if mission == 'Rosetta':
             freq_plot_center = -18.95
         if mission == 'Dawn':
@@ -245,7 +214,7 @@ def get_freq_plot_center(overview_freqs, overview_pxx, mission):
     return freq_plot_center
 
 
-def get_plot_window(freq_plot_center, df_calc, ppx_min, ppx_max):
+def get_plot_window(freq_plot_center, df_calc, pxx_min, pxx_max):
     """ A function that sets the recommended window properties for the plot. """
 
     """
@@ -274,10 +243,10 @@ def get_plot_window(freq_plot_center, df_calc, ppx_min, ppx_max):
     """
 
     # Display Name in GUI: “Y-Axis min (dB)”  # TODO: adjustable
-    ylim_min = round_to_nearest_n(ppx_min, n=5)
+    ylim_min = round_to_nearest_n(pxx_min, n=5)
     ylim_min = -10  # FIXME: return to original value
     # Display Name in GUI: “Y-Axis max (dB)”  # TODO: adjustable
-    ylim_max = round_to_nearest_n(ylim_min + 1.2 * (ppx_max - ppx_min), n=5)
+    ylim_max = round_to_nearest_n(ylim_min + 1.2 * (pxx_max - pxx_min), n=5)
     ylim_max = 70  # FIXME: return to original value
 
     return xlim_min, xlim_max, ylim_min, ylim_max
@@ -288,19 +257,6 @@ def set_value(value, default):
         return value
     else:
         return default
-
-
-def round_to_hundreds_place(n):
-    """ A function to round to the nearest tens place.  """
-
-    # Smaller multiple
-    a = (n // 100) * 100
-
-    # Larger multiple
-    b = a + 100
-
-    # Return of closest of two
-    return b if n - a > b - n else a
 
 
 def get_settings(filenames=None,
@@ -319,54 +275,36 @@ def get_settings(filenames=None,
                  xlim_min=None, xlim_max=None,
                  ylim_min=None, ylim_max=None,
                  start_sec_user=None, interval=None,
-                 file_start_time=None, file_end_time=None, window=None):
-    """ A function that stores all parameters for the radar analysis pipeline. """
+                 file_start_time=None, file_end_time=None,
+                 window=None, did_calculate_overview=False, old_settings=None):
+    """ A function that generates all parameters for the Signal Processing pipeline.
 
-    """
-    NOTE:   settings are chosen according to RCP file (ie. sample_rate)
+    NOTATIONS:
+    sc                  spacecraft
+    occ	                occultation
+    v		            velocity (m/s)
+    t		            time (sec)
+    dt	                change in time; duration (sec)
+    theta	            angle (radians)
+    df	                differential Doppler shift (aka the frequency separation
+                        between the direct and echo peaks)
 
-    NOTE:   Python 3 now supports any unicode character in variable names:
-            python-3-for-scientists.readthedocs.io/en/latest/python3_features.html
-
-    #############
-    # NOTATIONS:
-    #############
-
-    sc      spacecraft
-    occ	    occultation
-    v		velocity (m/s)
-    t		time (sec)
-    dt	    change in time; duration (sec)
-    theta		angle (radians)
-    df	    differential Doppler shift (aka the frequency separation 
-            between the direct and echo peaks)
-
-    ###############
-    # DEFINITIONS:
-    ###############
-
-    wavelength              transmitting wavelength of the spacecraft antenna (meters)
-
+    DEFINITIONS:
+    wavelength          transmitting wavelength of the spacecraft antenna (meters)
     theta_beamwidth     angular width of the spacecraft antenna’s beam (typically 1-2°)
-
-    radius_target   equatorial or average radius of the target body
-
-    v_sc_orbital    spacecraft’s orbital velocity around the target body at the time 
-                    of these observations
-
-    altitude_sc     spacecraft’s altitude above the target body at the time of 
-                    these observations
-
-    dt_occ          duration of the “quiet period” when the spacecraft’s antenna 
-                    is completely obscured behind the target body, aka the occultation 
-                    duration in seconds (usually on the order of 1-30 min)
+    radius_target       equatorial or average radius of the target body
+    v_sc_orbital        spacecraft’s orbital velocity around the target body at the time
+                        of these observations
+    altitude_sc         spacecraft’s altitude above the target body at the time of
+                        these observations
+    dt_occ              duration of the “quiet period” when the spacecraft’s antenna
+                        is completely obscured behind the target body, aka the occultation
+                        duration in seconds (usually on the order of 1-30 min)
     """
 
     #######################
     # PROCESSING SETTINGS
     #######################
-
-    print('\nget_settings()')
 
     # save settings to object, which is passed between functions
     s = ProgramSettings()
@@ -433,15 +371,6 @@ def get_settings(filenames=None,
     theta_sc_orbital_phase = (s.v_sc_orbital * s.dt_occ) / (2 * (s.radius_target + s.altitude_sc))
     theta_tilt = np.arccos((s.radius_target - (s.v_sc_orbital * s.dt_occ / (2 * math.pi)))
                        / (s.radius_target + s.altitude_sc))
-
-    print()
-    print('band_freq:                                ', band_freq)
-    print('(s.v_sc_orbital / wavelength):            ', (s.v_sc_orbital / wavelength))
-    print('np.sin(theta_sc_orbital_phase):           ', np.sin(theta_sc_orbital_phase))
-    print('np.sin(theta_tilt):                       ', np.sin(theta_tilt))
-    print('np.sin(theta_tilt + theta_beamwidth / 2): ', np.sin(theta_tilt + theta_beamwidth / 2))
-    print('theta_sc_orbital_phase:                   ', theta_sc_orbital_phase)
-    print('theta_tilt:                               ', theta_tilt)
 
     # Display name in GUI: “Calc. freq. separation (Hz)”   # TODO: adjustable
     s.df_calc = (s.v_sc_orbital / wavelength) * np.sin(theta_sc_orbital_phase) * abs(
@@ -538,9 +467,8 @@ def get_settings(filenames=None,
     # Welch Periodogram Calculation
     #################################
 
-    # TODO: Is the following docstring still accurate, or does it need to be updated?
     """
-    formula for number of samples to slice for each Welch calculation:
+    The formula for number of samples to slice for each Welch calculation:
 
     L = samples_per_raw_fft
     D = samples_per_hop
@@ -555,6 +483,10 @@ def get_settings(filenames=None,
 
     # number of samples of overlap between segments
     s.noverlap = s.samples_per_raw_fft - s.samples_per_hop
+
+    ##########################################
+    # Set Counters and Plot Refresh Interval
+    ##########################################
 
     # when to start and stop the animation
     s.start_sec_user = set_value(start_sec_user, 0)  # TODO: adjustable
@@ -571,31 +503,36 @@ def get_settings(filenames=None,
     s.start_index_count = s.start_index_user
     s.stop_index_count = s.stop_index_user
 
-    s.print_debug('1')
+    # milliseconds between frames in the animation
+    # NOTE: this may be limited due to intensive computational processes
+    s.interval = set_value(interval, default=500)
 
     ###################################
     # Generating Signal Overview Plot
     ###################################
 
-    # FIXME: EXPERIMENTAL
-    # get an overview of the direct signal over time, used for plotting
-    overview = signal_overview(rcp_data, lcp_data, s.samples_for_welch, s.sample_rate,
-                               s.samples_per_raw_fft, s.noverlap, s.samples_per_hop, s.mission)
-    s.overview_pxx = overview[0]
-    s.overview_freqs = overview[1]
-    s.overview_seconds = overview[2]
-    s.ppx_min = overview[3]
-    s.ppx_max = overview[4]
+    # only generate an overview plot once per dataset
+    if not did_calculate_overview:
+        # get an overview of the direct signal over time, used for plotting
+        overview = signal_overview(rcp_data, lcp_data, s.samples_for_welch, s.sample_rate,
+                                   s.samples_per_raw_fft, s.noverlap, s.samples_per_hop, s.mission)
+        s.overview_pxx = overview[0]
+        s.overview_freqs = overview[1]
+        s.overview_seconds = overview[2]
+        s.pxx_min = overview[3]
+        s.pxx_max = overview[4]
+    else:
+        copy_overview_data(old_settings=old_settings, new_settings=s)
 
-    #################
-    # Plot Settings
-    #################
+    ##############################
+    # Set Plot Window Dimensions
+    ##############################
 
     # find the frequency of the direct signal
     s.freq_plot_center = get_freq_plot_center(s.overview_freqs, s.overview_pxx, s.mission)
 
     # get default plot window settings
-    default_window_settings = get_plot_window(s.freq_plot_center, s.df_calc, s.ppx_min, s.ppx_max)
+    default_window_settings = get_plot_window(s.freq_plot_center, s.df_calc, s.pxx_min, s.pxx_max)
     default_x_min, default_x_max, default_y_min, default_y_max = default_window_settings
 
     # use default window dimensions, except if user has entered other values
@@ -604,8 +541,13 @@ def get_settings(filenames=None,
     s.ylim_min = set_value(ylim_min, default=default_y_min)
     s.ylim_max = set_value(ylim_max, default=default_y_max)
 
-    # milliseconds between frames in the animation
-    # NOTE: this may be limited due to intensive computational processes
-    s.interval = set_value(interval, default=500)
-
     return s
+
+
+def copy_overview_data(old_settings=None, new_settings=None):
+    """ A function to store pipeline components that were computationally intensive to produce. """
+    new_settings.overview_pxx = old_settings.overview_pxx
+    new_settings.overview_freqs = old_settings.overview_freqs
+    new_settings.overview_seconds = old_settings.overview_seconds
+    new_settings.pxx_min = old_settings.pxx_min
+    new_settings.pxx_max = old_settings.pxx_max

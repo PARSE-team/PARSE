@@ -1,6 +1,6 @@
 """
 read_data.py -- Contains helper functions for reading BSR data files.
-Copyright (C) 2020  Paul Sirri <paulsirri@gmail.com>
+Copyright (C) 2021  Paul Sirri <paulsirri@gmail.com>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -17,21 +17,19 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 # File Description:
-# This file contains helper functions for reading and processing
-# bistatic radar data files. It currently supports certain ASCII
-# and binary formats.
+# This file contains utility functions for reading and processing bistatic 
+# radar data files. It currently supports certain ASCII and binary formats.
 
-# NOTE: For reading files from the Rosetta Mission, which were
-# formatted using the official PDS3 "detached label" sub-format
-# (see chapter 5.1 in the PDS3 documentation), this file uses
-# functions written by Michael Kelley that are licensed
-# under a 3-clause BSD style license.
+# NOTE: This file uses a dependency to read label files from the Rosetta Mission, which 
+# were formatted using the official PDS3 "detached label" sub-format (see chapter 5.1 in 
+# the PDS3 documentation for more info). The aforementioned dependency is available at
+# https://github.com/mkelley/pds3
 
 import numpy as np
 from os import scandir
 from pds3_mkelley.pds3.core import read_label
 from astropy.time import Time
-import datetime
+from datetime import datetime, timedelta
 import time
 
 
@@ -163,15 +161,8 @@ def get_files_dawn(directory):
             elif polarization is 'L':
                 polarization = 'LEFT CIRCULAR'
 
-            # this is the script for reading original data from ASCII file
-            """# start and stop times for this data series
-            with open(path_to_data, 'r') as f:
-                first_line = f.readline().strip()
-            with open(path_to_data, 'rb') as f:
-                f.seek(-2, os.SEEK_END)
-                while f.read(1) != b'\n':
-                    f.seek(-2, os.SEEK_CUR)
-                last_line = f.readline().decode()"""
+            # get lines from original ASCII file (only binary version kept in project repository)
+            # first_line, last_line = read_dawn_ascii(path_to_data)
 
             first_line = '2011 358 12601.00003'
             last_line = '2011 358 19260.99997'
@@ -195,6 +186,20 @@ def get_files_dawn(directory):
     return dawn_files
 
 
+def read_dawn_ascii(path_to_data):
+    # get lines from the original Dawn ASCII file (only binary version kept in project repository)
+    # start and stop times for this data series
+    """with open(path_to_data, 'r') as f:
+        first_line = f.readline().strip()
+    with open(path_to_data, 'rb') as f:
+        f.seek(-2, os.SEEK_END)
+        while f.read(1) != b'\n':
+            f.seek(-2, os.SEEK_CUR)
+        last_line = f.readline().decode()
+    return first_line, last_line"""
+    pass
+
+
 def yds_to_ymdhms(year_day_second):
     """ A function to convert Dawn's time format (year:day:second) to standard format. """
 
@@ -204,7 +209,7 @@ def yds_to_ymdhms(year_day_second):
     seconds_in_day = year_day_second[9:20]
 
     # convert seconds_in_day to regular hms
-    hms = str(datetime.timedelta(seconds=float(seconds_in_day)))
+    hms = str(timedelta(seconds=float(seconds_in_day)))
     concatenate = year + ':' + day_in_year + ':' + hms
 
     ymdhms = Time(concatenate, in_subfmt='date_hms', precision=5)
@@ -279,6 +284,14 @@ def find_polar_pair_dawn(chosen_file, dl_list):
                             return chosen_file, dl
                         else:
                             print('error')
+
+
+def get_polar_compliment(file, dl_list):
+    rcp, lcp = find_polar_pair(file, dl_list)
+    if file is rcp:
+        return lcp
+    elif file is lcp:
+        return rcp
 
 
 def rows_in_file(filename):
@@ -362,16 +375,13 @@ def get_dtypes_rosetta(data_label):
 
 
 def get_dtypes_dawn():
-    dt = np.dtype(
-        [('Year', np.int32), ('Day of Year', np.int32), ('Second in Day', np.float64),
-         ('I', np.int32), ('Q', np.int32)])
+    dt = np.dtype([('Year', np.int32), ('Day of Year', np.int32), ('Second in Day', np.float64),
+                   ('I', np.int32), ('Q', np.int32)])
     return dt
 
 
 def file_to_numpy(data_label):
     """ A function that reads the entire data file into a Numpy array. """
-
-    print('file_to_numpy')
 
     if data_label.mission == 'Rosetta':
         return file_to_numpy_rosetta(data_label)
@@ -394,21 +404,15 @@ def file_to_numpy_rosetta(data_label):
 
 def file_to_numpy_dawn(data_label, use_binary_version=True):
     if use_binary_version:
-        print('loading from npy file: ' + str(data_label.path_to_data))
         return np.load(data_label.path_to_data)
     else:
         # set the Numpy dtype for all columns
         dt = np.dtype(get_dtypes(data_label))
 
-        print('reading from ascii file...')
-
         # read from ASCII file
         start_time = time.time()
         table = np.loadtxt(data_label.path_to_data, dtype=dt)
         end_time = time.time()
-        print('Seconds to read ASCII file: ', round(end_time - start_time, 3))
-
-        print('saving dawn data file to .npy')
 
         if data_label.file_name == '203VSOC2011358_0330NNNX43LD.2B2':
             np.save('203VSOC2011358_0330NNNX43LD.2B2.npy', table)
@@ -422,8 +426,6 @@ def get_iq_data(table, mission):
     """ A function that isolates the IQ data from the processed file,
     combining the imaginary and real parts into a memory efficient complex number. """
 
-    print('get_iq_data')
-
     if mission == 'Rosetta':
         return get_iq_data_rosetta(table)
     elif mission == 'Dawn':
@@ -436,7 +438,6 @@ def get_iq_data_rosetta(table):
     # add the I and Q vectors, cast as imaginary
     iq_data = (table['SAMPLE WORDS']['real']
                + table['SAMPLE WORDS']['imag'] * 1.j).astype(np.complex64)
-
     return iq_data.flatten()
 
 
@@ -480,3 +481,31 @@ def get_sample_rate_dawn(data):
                 else:
                     print('error finding sample rate for dawn files')
         count += 1
+
+
+def strftime_DOY(astropy_datetime):
+    return astropy_datetime.strftime('%j')
+
+
+def strftime_timestamp(astropy_datetime):
+    return astropy_datetime.strftime('%Y-%m-%d %H:%M:%S')
+
+
+def strftime_hhmmss(astropy_datetime):
+    return astropy_datetime.strftime('%H:%M:%S')
+
+
+def strftime_yyyyDOYhhmmss(astropy_datetime):
+    return astropy_datetime.strftime('(%Y-%j) %H:%M:%S')
+
+
+def strftime_yyyyDOYhhmmssff(astropy_datetime):
+    return astropy_datetime.strftime('(%Y-%j) %H:%M:%S.%f')
+
+
+def strftime_yyyyDOY(astropy_datetime):
+    return astropy_datetime.strftime('%Y-%j')
+
+
+def astropy_to_python(astropy_datetime):
+    return datetime.strptime(str(astropy_datetime), '%Y-%m-%d %H:%M:%S.%f')

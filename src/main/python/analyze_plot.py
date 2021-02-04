@@ -1,6 +1,6 @@
 """
 analyze_plot.py -- Generates results for the Spectral Analysis tab.
-Copyright (C) 2020  Paul Sirri <paulsirri@gmail.com>
+Copyright (C) 2021  Paul Sirri <paulsirri@gmail.com>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -17,7 +17,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 # File Description:
-# Generates results for the Spectral Analysis tab.
+# This file contains functions to generate results for the Spectral Analysis pipeline.
 
 import numpy as np
 from scipy import signal
@@ -71,20 +71,20 @@ class SignalAnalysis:
 
     def pprint(self):
         print('\nPlot Analysis: ')
-        print('NdB_below:            ', self.NdB_below)
-        print('freq_local_min:       ', self.freq_local_min)
-        print('freq_local_max:       ', self.freq_local_max)
-        print('Pxx_max_RCP:              ', self.Pxx_max_RCP)
-        print('freq_at_max:          ', self.freq_at_max)
-        print('bandwidth_RCP_at_max:     ', self.bandwidth_RCP_at_max)
-        print('Pxx_noise_var_RCP:        ', self.Pxx_noise_var_RCP)
-        print('df_calc:              ', self.df_calc)
-        print('Pxx_local_max_RCP:        ', self.Pxx_local_max_RCP)
-        print('freq_at_local_max:    ', self.freq_at_local_max)
+        print('NdB_below:               ', self.NdB_below)
+        print('freq_local_min:          ', self.freq_local_min)
+        print('freq_local_max:          ', self.freq_local_max)
+        print('Pxx_max_RCP:             ', self.Pxx_max_RCP)
+        print('freq_at_max:             ', self.freq_at_max)
+        print('bandwidth_RCP_at_max:    ', self.bandwidth_RCP_at_max)
+        print('Pxx_noise_var_RCP:       ', self.Pxx_noise_var_RCP)
+        print('df_calc:                 ', self.df_calc)
+        print('Pxx_local_max_RCP:       ', self.Pxx_local_max_RCP)
+        print('freq_at_local_max:       ', self.freq_at_local_max)
         print('bandwidth_RCP_local_max: ', self.bandwidth_RCP_local_max)
-        print('Pxx_local_var:        ', self.Pxx_local_var)
-        print('delta_Pxx_max_RCP:             ', self.delta_Pxx_max_RCP)
-        print('df_obsv:              ', self.df_obsv)
+        print('Pxx_local_var:           ', self.Pxx_local_var)
+        print('delta_Pxx_max_RCP:       ', self.delta_Pxx_max_RCP)
+        print('df_obsv:                 ', self.df_obsv)
         print()
 
 
@@ -96,24 +96,27 @@ def set_value(value, default):
 
 
 # screen4results_v1.py
-def analyze_plot(s, freqs, Pxx, freqs_LCP, Pxx_LCP, NdB_below=None, freq_local_min=None, freq_local_max=None):
+def analyze_plot(s, freqs, Pxx, freqs_LCP, Pxx_LCP, NdB_below=None, freq_local_min=None,
+                 freq_local_max=None):
+    """
+    A function that generates all results for the Signal Analysis pipeline.
+
+    NOTATION:
+    dB          decibels; herein defined as 10*log10(power/average_noise_power)
+    Pxx         1D array of power values (dB) from Matplotlib’s PSD function
+    freqs       1D array of x-axis frequencies (Hz) from Matplotlib’s PSD function
+    freq_       frequency of something (Hz)
+    df          differential Doppler shift (aka frequency separation
+                between the direct and echo peaks)
+    bw          bandwidth (Hz); frequency width of a peak measured at a predefined
+                height on said peak
+    """
+
     # ----------------------- SIGNAL ANALYSIS RESULTS -----------------------
 
     # save signal analysis results to object, which is passed between functions
     # “msmt” is shorthand for “measurement” of the signal characteristics:
-    msmt = SignalAnalysis()  # MADE THIS UP TOO
-
-    """
-    NOTATION:
-    dB      decibels; herein defined as 10*log10(power/average_noise_power)
-    Pxx     1D array of power values (dB) from Matplotlib’s PSD function
-    freqs   1D array of x-axis frequencies (Hz) from Matplotlib’s PSD function
-    freq_   frequency of something (Hz)
-    df      differential Doppler shift (aka frequency separation between the 
-                direct and echo peaks)
-    bw      bandwidth (Hz); frequency width of a peak measured at a predefined 
-                height on said peak
-    """
+    msmt = SignalAnalysis()
 
     # ----- Analysis Settings -----
 
@@ -209,10 +212,6 @@ def analyze_plot(s, freqs, Pxx, freqs_LCP, Pxx_LCP, NdB_below=None, freq_local_m
         msmt.resamp_freq = x_resamp
         msmt.resamp_pxx = y_resamp
 
-        print('\nmax(y): ', max(y))
-        print('n_dB: ', n_dB)
-        print('bw_height: ', bw_height)
-
         # print(np.where((y_resamp >= (bw_height - 1)) & (y_resamp <= (bw_height + 1))))
 
         # find any x values where y = bw_height
@@ -221,8 +220,6 @@ def analyze_plot(s, freqs, Pxx, freqs_LCP, Pxx_LCP, NdB_below=None, freq_local_m
         # find index of peaks in resampled array, iterate L/R to find first instances of n_dB
         # then max-min to find bandwidth
         index_of_resamp_peak = y.argmax() * resamp_resolution
-        print("\nfound the same peak again: ", np.around(y_resamp[index_of_resamp_peak], 7) == np.around(np.max(y), 7))
-        print()
 
         for i in range(index_of_resamp_peak, len(y_resamp)):
             if (y_resamp[i] >= (bw_height - 0.5)) and (y_resamp[i] <= (bw_height + 0.5)):
@@ -230,8 +227,6 @@ def analyze_plot(s, freqs, Pxx, freqs_LCP, Pxx_LCP, NdB_below=None, freq_local_m
                 print('\n\nFOUND1\n\n')
                 break
 
-        print()
-        print()
         for i in range(index_of_resamp_peak, 1, -1):
             if (y_resamp[i] >= (bw_height - 0.5)) and (y_resamp[i] <= (bw_height + 0.5)):
                 indexes.append(i)
@@ -331,9 +326,5 @@ def analyze_plot(s, freqs, Pxx, freqs_LCP, Pxx_LCP, NdB_below=None, freq_local_m
     # This is the measured frequency separation between the two peaks in this graph.
     # Display Name in GUI: “delta_X Observed (𝛿f)”
     msmt.df_obsv = msmt.freq_at_max - msmt.freq_at_local_max
-
-    print()
-    msmt.pprint()
-    print()
 
     return msmt

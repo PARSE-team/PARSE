@@ -1,6 +1,6 @@
 """
 animation.py -- Custom PyQt5 widget that dynamically visualizes data.
-Copyright (C) 2020  Paul Sirri <paulsirri@gmail.com>
+Copyright (C) 2021  Paul Sirri <paulsirri@gmail.com>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -17,10 +17,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 # File Description:
-# This file contains a custom PyQt5 widget that dynamically
-# visualizes data using the Matplotlib backend.
-
-# from __future__ import unicode_literals
+# This file defines a custom PyQt5 widget that dynamically visualizes data using the Matplotlib
+# backend (see documentation for Matplotlib's FigureCanvas class). It also defines a worker class
+# that generates data using multithreading so the GUI remains responsive.
 
 import matplotlib
 
@@ -28,10 +27,16 @@ matplotlib.use('Qt5Agg')
 from PyQt5 import QtCore, QtWidgets
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
-from process_signal import get_psd
-from astropy.time import TimeDelta
-import time
+import matplotlib.dates as mdates
+import matplotlib.ticker as ticker
+
 import numpy as np
+import time
+import copy
+from astropy.time import Time, TimeDelta
+from process_signal import get_psd
+from read_data import strftime_yyyyDOYhhmmssff, astropy_to_python, \
+    strftime_DOY, strftime_hhmmss, strftime_yyyyDOYhhmmss, strftime_yyyyDOY
 
 
 class WorkerDataGenerator(QtCore.QObject):
@@ -59,10 +64,10 @@ class WorkerDataGenerator(QtCore.QObject):
         self.noverlap = None
         self.seconds_per_hop = None
         self.samples_per_hop = None
+        self.seconds_for_welch = None
 
         # global time to update each frame
         self.global_time = None
-        self.delta_time = None
 
         # local counters
         self.start_sec_count = None
@@ -81,9 +86,9 @@ class WorkerDataGenerator(QtCore.QObject):
                                    self.sample_rate, self.samples_per_raw_fft, self.noverlap)
 
             # format labels for this frame
-            seconds_label = self.get_seconds_label()
-            date_label = self.global_time
-            time_label = str(date_label) + '\n' + seconds_label
+            time_label = 'From: ' + strftime_yyyyDOYhhmmssff(self.global_time) \
+                         + '\nTo:   ' + strftime_yyyyDOYhhmmssff(
+                self.global_time + TimeDelta(self.seconds_for_welch, format='sec'))
             files_label = 'RCP file: ' + self.filenames[0] + '\nLCP file: ' + self.filenames[1]
 
             # store copy of counters, then update them
@@ -93,12 +98,8 @@ class WorkerDataGenerator(QtCore.QObject):
             # update the counters
             self.update_counters()
 
-            return rcp_x, rcp_y, lcp_x, lcp_y, files_label, time_label, current_index, current_second
-
-    def get_seconds_label(self):
-        """ A method that returns formatted seconds label. """
-        return 'Seconds in File: {} to {}'.format(round(self.start_sec_count, 3),
-                                                  round(self.stop_sec_count, 3))
+            return rcp_x, rcp_y, lcp_x, lcp_y, files_label, time_label, current_index, \
+                   current_second
 
     def update_counters(self):
         """ A method that updates counters used to generate each frame. """
@@ -110,8 +111,7 @@ class WorkerDataGenerator(QtCore.QObject):
         self.stop_index_count += self.samples_per_hop
 
         # update global time
-        current_time = self.global_time + self.delta_time
-        self.global_time = current_time
+        self.global_time = self.global_time + TimeDelta(self.seconds_per_hop, format='sec')
 
     def setup(self, s, rcp_data, lcp_data):
 
@@ -126,10 +126,10 @@ class WorkerDataGenerator(QtCore.QObject):
         self.noverlap = s.noverlap
         self.seconds_per_hop = s.seconds_per_hop
         self.samples_per_hop = s.samples_per_hop
+        self.seconds_for_welch = s.seconds_for_welch
 
         # global time to update each frame
-        self.global_time = s.global_time
-        self.delta_time = TimeDelta(s.seconds_per_hop, format='sec')
+        self.global_time = s.file_start_time + TimeDelta(s.start_sec_user, format='sec')
 
         # local counters
         self.start_sec_count = s.start_sec_count
@@ -196,8 +196,8 @@ class BSRAnimation(FigureCanvas):
 
         # instantiate artist containers
         self.fig = Figure(figsize=(width, height), dpi=dpi)
-        self.signal_plot = self.fig.add_subplot(20, 1, (1, 14))
-        self.overview_plot = self.fig.add_subplot(20, 1, (18, 20))
+        self.signal_plot = self.fig.add_subplot(22, 1, (1, 14))
+        self.overview_plot = self.fig.add_subplot(22, 1, (18, 20))
         # self.toolbar = NavigationToolbar(self.canvas,self)
         # gridlayout.addWidget(self.toolbar,0,0,1,2)
 
@@ -205,7 +205,7 @@ class BSRAnimation(FigureCanvas):
         FigureCanvas.__init__(self, self.fig)
         self.setParent(parent)
 
-        # set the animation properties
+        # set the widget properties
         FigureCanvas.setSizePolicy(self, QtWidgets.QSizePolicy.Expanding,
                                    QtWidgets.QSizePolicy.Expanding)
         FigureCanvas.updateGeometry(self)
@@ -213,18 +213,23 @@ class BSRAnimation(FigureCanvas):
         self.timer = QtCore.QTimer(self)
         self.timer.timeout.connect(self.update_frame)
 
-        # initialize settings and data
-        self.s = None
+        # instantiate data
         self.rcp_data = None
         self.lcp_data = None
+
+        # instantiate parameters
+        self.s = None
         self.msmt = None
 
-        # initialize queue to store plots the animation will draw each frame
+        # instantiate queue of plots to draw each frame
         self.plots = None
         self.frame_index = None
 
         # the initial empty frame has not yet been setup
         self.was_setup = False
+
+        # only calculate the timeseries for the overview plot once
+        self.did_setup_timeseries = False
 
         # Create a WorkerDataGenerator object and a thread
         self.worker_datagen = WorkerDataGenerator()
@@ -233,8 +238,6 @@ class BSRAnimation(FigureCanvas):
         # Assign the worker_datagen to the thread and start the thread
         self.worker_datagen.moveToThread(self.worker_datagen_thread)
         self.worker_datagen_thread.start()
-
-        print('connecting signals to slots')
 
         # Connect signals & slots AFTER moving the object to the thread
         # connect worker_datagen.signal_to_return_plot (signal) to self.add_plot_to_queue (slot)
@@ -249,8 +252,6 @@ class BSRAnimation(FigureCanvas):
 
     def setup(self, s, rcp_data, lcp_data):
         """ A method to setup the BSRAnimation and its DataGeneratorWorker with new settings. """
-
-        print("\nBSRAnimation.setup()")
 
         # kill the worker's current tasks
         self.kill_worker()
@@ -268,7 +269,7 @@ class BSRAnimation(FigureCanvas):
         time.sleep(0.5)
 
         # save raw data and signal processing parameters
-        self.s = s
+        self.s = copy.deepcopy(s)
         self.rcp_data = rcp_data
         self.lcp_data = lcp_data
 
@@ -282,41 +283,31 @@ class BSRAnimation(FigureCanvas):
 
     def play(self):
         self.start_worker()
-
-        print("BSRAnimation.play()")
         if not self.timer.isActive():
             # the animation was paused, so play it
             self.timer.start(self.s.interval)
 
     def pause(self):
         self.pause_worker()
-
-        print("BSRAnimation.pause()")
         if self.timer.isActive():
             # the animation was playing, so pause it
             self.timer.stop()
 
     def start_worker(self):
-        print('\nBSRAnimation.start_worker()')
         if not self.worker_datagen.is_running:
             # the worker was paused, so start it
             self.worker_datagen.is_running = True
 
     def pause_worker(self):
-        print('\nBSRAnimation.pause_worker()')
         if self.worker_datagen.is_running:
             # the worker was running, so pause it
             self.worker_datagen.is_running = False
 
     def kill_worker(self):
-        print('\nBSRAnimation.kill_worker()\n')
         # kill the worker's run() method
         self.worker_datagen.is_killed = True
 
     def run_worker(self, s, rcp_data, lcp_data):
-        print('\nBSRAnimation.run_worker()')
-        print('\nSIGNAL: BSRAnimation.signal_to_run_worker.emit(s, rcp_data, lcp_data)')
-
         # begin generating plots, once the animation is run the first time
         self.signal_to_run_worker.emit(s, rcp_data, lcp_data)
 
@@ -326,11 +317,8 @@ class BSRAnimation(FigureCanvas):
 
     def show_next_frame(self):
         self.pause()
-        print('\n\nshow_next_frame!')
         if self.frame_index == len(self.plots) - 1:
-            print('no plots 1')
             self.start_worker()
-            # FIXME: have the list emit a signal every time it's incremented?
             time.sleep(0.5)
             self.pause_worker()
         elif (len(self.plots) - 1 - self.frame_index) < 10:
@@ -342,14 +330,12 @@ class BSRAnimation(FigureCanvas):
     # @QtCore.pyqtSlot(object)
     def plot_analysis_results(self, msmt):
         """ A method to plot the measurements of the spectral analysis. """
-        print("plot_analysis_results()")
         self.msmt = msmt
         self.update_frame(repeat=True, results=True)
 
     # @QtCore.pyqtSlot()
     def hide_analysis_results(self):
         """ A method to hide the measurements of the spectral analysis. """
-        print("hide_analysis_results()")
         self.update_frame(repeat=True)
 
     def update_frame(self, plot_previous_frame=False, plot_next_frame=False, repeat=False,
@@ -358,8 +344,6 @@ class BSRAnimation(FigureCanvas):
 
         # choose what to draw on the FigureCanvas
         if (self.s.stop_index_count < self.rcp_data.size) and (self.plots or not self.was_setup):
-
-            print('plotting frame')
 
             ####################################
             # Get Data for Plotting this Frame
@@ -402,19 +386,16 @@ class BSRAnimation(FigureCanvas):
             elif not self.was_setup:
                 # FIXME: what's the point of having an initial empty frame?
 
-                print("\ndrawing the initial empty frame \n")
-
                 self.frame_index = 0
                 self.plots.append((None, None))
 
                 # do not plot any data on the initial frame
                 rcp_x, rcp_y, lcp_x, lcp_y = [], [], [], []
 
-                # format labels for this frame
-                seconds_label = 'Seconds in File: {} to {}'.format(self.s.start_sec_count,
-                                                                   self.s.stop_sec_count)
-                date_label = self.s.global_time
-                time_label = str(date_label) + '\n' + seconds_label
+                start = self.s.file_start_time + TimeDelta(self.s.start_sec_user, format='sec')
+                time_label = 'From: ' + strftime_yyyyDOYhhmmssff(start) \
+                             + '\nTo:   ' + strftime_yyyyDOYhhmmssff(start + TimeDelta(self.s.seconds_for_welch, format='sec'))
+
                 files_label = 'RCP file: ' + self.s.filenames[0] + '\nLCP file: ' + \
                               self.s.filenames[1]
 
@@ -428,8 +409,8 @@ class BSRAnimation(FigureCanvas):
             else:
                 print('an error has occurred')
                 # error has occurred
-                rcp_x, rcp_y, lcp_x, lcp_y, files_label, time_label, current_index, \
-                current_second = None
+                rcp_x = rcp_y = lcp_x = lcp_y = files_label = time_label = current_index = \
+                    current_second = None
 
             print('frame index: ', self.frame_index)
 
@@ -451,6 +432,7 @@ class BSRAnimation(FigureCanvas):
             self.signal_plot.legend(loc=2, fontsize=13)
 
             # mark the estimated direct signal
+            # todo peak detection per frame
             # self.signal_plot.axvline(x=self.s.freq_plot_center, lw=0.1, color='blue')
             if self.frame_index != 0:
                 direct_signal = rcp_x[np.argmax(rcp_y)]
@@ -458,16 +440,15 @@ class BSRAnimation(FigureCanvas):
 
             # plot labels to display metadata for this frame
             self.signal_plot.patch.set_visible(False)
-            self.signal_plot.text(0.26, 1.10, s=files_label, **font_mono, fontsize=10,
-                                  horizontalalignment='center',
-                                  verticalalignment='center',
-                                  transform=self.signal_plot.transAxes,
-                                  bbox=(dict(facecolor='white', alpha=0.2)))
-            self.signal_plot.text(0.77, 1.10, s=time_label, **font_mono, fontsize=10,
-                                  horizontalalignment='center',
-                                  verticalalignment='center',
-                                  transform=self.signal_plot.transAxes,
-                                  bbox=(dict(facecolor='white', alpha=0.2)))
+            self.signal_plot.text(
+                0.26, 1.10, s=files_label, **font_mono, fontsize=10, horizontalalignment='center',
+                verticalalignment='center', transform=self.signal_plot.transAxes,
+                bbox=(dict(facecolor='white', alpha=0.2)))
+            self.signal_plot.text(
+                0.77, 1.10, s=time_label, **font_mono, fontsize=10, horizontalalignment='center',
+                verticalalignment='center',
+                transform=self.signal_plot.transAxes,
+                bbox=(dict(facecolor='white', alpha=0.2)))
 
             # label the axes for the signal plot
             self.signal_plot.set_xlabel("Frequency (Hz)", fontsize=15, **font_arial)
@@ -481,123 +462,139 @@ class BSRAnimation(FigureCanvas):
             # Plot the Direct Signal Over the Entire Time Series
             ######################################################
 
+            # only setup the overview plot once per dataset
+            if not self.did_setup_timeseries:
+                # generate timeseries for x-axis, use native datetime module for MPL compatibility
+                timeseries_astropy = [(self.s.file_start_time + TimeDelta(str(sec), format='sec'))
+                                      for sec in self.s.overview_seconds]
+                self.timeseries = [astropy_to_python(t) for t in timeseries_astropy]
+                self.did_setup_timeseries = True
+
             # plot the signal in file over time
-            self.overview_plot.plot(self.s.overview_seconds, self.s.overview_pxx, lw=0.7,
-                                    color='blue')
+            self.overview_plot.plot_date(self.timeseries, self.s.overview_pxx,
+                                         ls='solid', lw=0.7, color='blue', markersize=0)
+
+            def format_date_major(x, y):
+                return matplotlib.dates.num2date(x).strftime('(%Y-%j)\n%H:%M:%S')
+
+            def format_date_minor(x, y):
+                return matplotlib.dates.num2date(x).strftime('%H:%M:%S')
+
+            # x-axis tick formatters
+            self.overview_plot.xaxis.set_major_formatter(ticker.FuncFormatter(format_date_major))
+            self.overview_plot.xaxis.set_minor_formatter(ticker.FuncFormatter(format_date_minor))
+
+            # x-axis tick locators
+            self.overview_plot.xaxis.set_major_locator(mdates.DayLocator(interval=1))
+            self.overview_plot.xaxis.set_minor_locator(mdates.AutoDateLocator(interval_multiples=True))
+
+            # x-axis tick parameters
+            self.overview_plot.tick_params(axis='x', which='minor', rotation=30)
+            self.overview_plot.tick_params(axis='x', which='major', pad=35, length=5)
+            # self.overview_plot.tick_params(which='major', width=1.00, length=5)
+            # self.overview_plot.tick_params(which='minor', width=0.75, length=2.5, labelsize=10)
 
             # mark current frame's location in the time series
-            self.overview_plot.axvline(x=current_second, lw=1, color='red')
-
-            # add label for the file's start time and end times
-            self.overview_plot.text(0.11, -0.54, s=str(self.s.file_start_time)[:-4], **font_arial,
-                                    fontsize=11,
-                                    horizontalalignment='center',
-                                    verticalalignment='center',
-                                    transform=self.signal_plot.transAxes,
-                                    bbox=(dict(facecolor='white', alpha=0.2)))
-            self.overview_plot.text(0.89, -0.54, s=str(self.s.file_end_time)[:-4], **font_arial,
-                                    fontsize=11,
-                                    horizontalalignment='center',
-                                    verticalalignment='center',
-                                    transform=self.signal_plot.transAxes,
-                                    bbox=(dict(facecolor='white', alpha=0.2)))
+            self.overview_plot.axvline(x=matplotlib.dates.date2num(astropy_to_python(
+                self.s.file_start_time + TimeDelta(current_second, format='sec'))),
+                lw=1.5, color='red')
 
             # label the axes for the overview plot
-            self.overview_plot.set_xlabel("Time in File (seconds)", fontsize=13, **font_arial)
-            self.overview_plot.set_ylabel("Maximum\nPower\n(dB)", fontsize=12, **font_arial,
-                                          rotation=0, labelpad=33)
+            self.overview_plot.set_xlabel("Time", fontsize=13, **font_arial)
+            self.overview_plot.set_ylabel(
+                "Max\nPower\n(dB)", fontsize=12, **font_arial, rotation=0, labelpad=33)
             self.overview_plot.yaxis.set_label_coords(-0.1, 0)
 
             # set padding options for both axes
-            seconds_domain = self.s.overview_seconds[-1] - self.s.overview_seconds[0]
+            seconds_domain = (self.s.file_end_time - self.s.file_start_time).to_value('sec')
             time_pad = seconds_domain * 0.01
+            time_pad = TimeDelta(str(round(time_pad)), format='sec')
             signal_range = np.max(self.s.overview_pxx) - np.min(self.s.overview_pxx)
             signal_pad = signal_range * 0.1
 
             # set the window properties
-            self.overview_plot.set_xlim(self.s.overview_seconds[0] - time_pad,
-                                        self.s.overview_seconds[-1] + time_pad)
-            self.overview_plot.set_ylim(np.min(self.s.overview_pxx) - signal_pad,
-                                        np.max(self.s.overview_pxx) + signal_pad)
+            self.overview_plot.set_xlim(
+                matplotlib.dates.date2num(astropy_to_python(self.s.file_start_time)),
+                matplotlib.dates.date2num(astropy_to_python(self.s.file_end_time)))
+            self.overview_plot.set_ylim(
+                np.min(self.s.overview_pxx) - signal_pad, np.max(self.s.overview_pxx) + signal_pad)
 
             # update the counter
             self.s.stop_index_count = current_index
 
             if results:
                 # mark and label the selected range
-                self.signal_plot.axvline(x=self.msmt.freq_local_min, lw=0.7, color='blue',
-                                         linestyle='--')
-                self.signal_plot.axvline(x=self.msmt.freq_local_max, lw=0.7, color='blue',
-                                         linestyle='--')
-                self.signal_plot.text(x=(((self.msmt.freq_local_max - self.msmt.freq_local_min) / 3) + self.msmt.freq_local_min),
-                                      y=self.msmt.Pxx_max_RCP * 1.3,
-                                      s='Selected Range', **font_arial, fontsize=10,
-                                      horizontalalignment='center',
-                                      verticalalignment='top',
-                                      color='blue')
+                self.signal_plot.axvline(
+                    x=self.msmt.freq_local_min, lw=0.7, color='blue', linestyle='--')
+                self.signal_plot.axvline(
+                    x=self.msmt.freq_local_max, lw=0.7, color='blue', linestyle='--')
+                self.signal_plot.text(
+                    x=(((self.msmt.freq_local_max - self.msmt.freq_local_min) / 3)
+                       + self.msmt.freq_local_min),
+                    y=self.msmt.Pxx_max_RCP * 1.3, s='Selected Range', **font_arial, fontsize=10,
+                    horizontalalignment='center', verticalalignment='top', color='blue')
 
                 # mark and label both peaks
-                self.signal_plot.plot([self.msmt.freq_at_max, self.msmt.freq_at_max],
-                                      [-150, self.msmt.Pxx_max_RCP],
-                                      lw=1.4, color='black', linestyle='-', marker="D", markersize=3)
-                self.signal_plot.text(x=self.msmt.freq_at_max,
-                                      y=self.msmt.Pxx_max_RCP * 1.15,
-                                      s='global max', **font_arial, fontsize=10,
-                                      horizontalalignment='center',
-                                      verticalalignment='top',
-                                      color='black')
-                self.signal_plot.plot([self.msmt.freq_at_local_max, self.msmt.freq_at_local_max],
-                                      [-150, self.msmt.Pxx_local_max_RCP],
-                                      lw=1.4, color='black', linestyle='-', marker="D", markersize=3)
-                self.signal_plot.text(x=self.msmt.freq_at_local_max,
-                                      y=self.msmt.Pxx_local_max_RCP * 1.1,
-                                      s='local max', **font_arial, fontsize=10,
-                                      horizontalalignment='center',
-                                      verticalalignment='top',
-                                      color='black')
+                self.signal_plot.plot(
+                    [self.msmt.freq_at_max, self.msmt.freq_at_max], [-150, self.msmt.Pxx_max_RCP],
+                    lw=1.4, color='black', linestyle='-', marker="D", markersize=3)
+                self.signal_plot.text(
+                    x=self.msmt.freq_at_max, y=self.msmt.Pxx_max_RCP * 1.15, s='global max',
+                    fontsize=10, **font_arial, horizontalalignment='center',
+                    verticalalignment='top', color='black')
+                self.signal_plot.plot(
+                    [self.msmt.freq_at_local_max, self.msmt.freq_at_local_max],
+                    [-150, self.msmt.Pxx_local_max_RCP], lw=1.4, color='black',
+                    linestyle='-', marker="D", markersize=3)
+                self.signal_plot.text(
+                    x=self.msmt.freq_at_local_max, y=self.msmt.Pxx_local_max_RCP * 1.1,
+                    s='local max', **font_arial, fontsize=10, horizontalalignment='center',
+                    verticalalignment='top', color='black')
 
                 # mark and label delta-f
                 self.signal_plot.plot(
-                    [self.msmt.freq_at_max, self.msmt.freq_at_local_max], [(self.s.ylim_min + (self.s.ylim_max - self.s.ylim_min) * 0.1), (self.s.ylim_min + (self.s.ylim_max - self.s.ylim_min) * 0.1)],
+                    [self.msmt.freq_at_max, self.msmt.freq_at_local_max],
+                    [(self.s.ylim_min + (self.s.ylim_max - self.s.ylim_min) * 0.1),
+                     (self.s.ylim_min + (self.s.ylim_max - self.s.ylim_min) * 0.1)],
                     lw=1.4, color='black', linestyle='-', marker="D", markersize=4)
-                self.signal_plot.text(x=(np.max([self.msmt.freq_at_max, self.msmt.freq_at_local_max]) + 1),
-                                      y=(self.s.ylim_min + (self.s.ylim_max - self.s.ylim_min) * 0.1),
-                                      s='df',
-                                      **font_arial, fontsize=11,
-                                      horizontalalignment='right',
-                                      verticalalignment='center',
-                                      color='black')
+                self.signal_plot.text(
+                    x=(np.max([self.msmt.freq_at_max, self.msmt.freq_at_local_max]) + 1),
+                    y=(self.s.ylim_min + (self.s.ylim_max - self.s.ylim_min) * 0.1),
+                    s='df', **font_arial, fontsize=11, horizontalalignment='right',
+                    verticalalignment='center', color='black')
 
                 # mark and label the bandwidth of both peaks
-                self.signal_plot.plot([self.msmt.bandwidth_RCP_at_max_start, self.msmt.bandwidth_RCP_at_max_stop],
-                                      [(self.msmt.Pxx_max_RCP - self.msmt.NdB_below), (self.msmt.Pxx_max_RCP - self.msmt.NdB_below)],
-                                      lw=1.3, color='black', linestyle='-', marker="D", markersize=3)
-                self.signal_plot.text(x=(self.msmt.bandwidth_RCP_at_max_start + (self.msmt.bandwidth_RCP_at_max_stop - self.msmt.bandwidth_RCP_at_max_start) / 2),
-                                      y=(self.msmt.Pxx_max_RCP - self.msmt.NdB_below),
-                                      s='bandwidth\nat -' + str(self.msmt.NdB_below) + ' dB', **font_arial, fontsize=10,
-                                      horizontalalignment='center',
-                                      verticalalignment='center',
-                                      color='black')
                 self.signal_plot.plot(
-                    [self.msmt.bandwidth_RCP_local_max_start, self.msmt.bandwidth_RCP_local_max_stop],
+                    [self.msmt.bandwidth_RCP_at_max_start, self.msmt.bandwidth_RCP_at_max_stop],
+                    [(self.msmt.Pxx_max_RCP - self.msmt.NdB_below),
+                     (self.msmt.Pxx_max_RCP - self.msmt.NdB_below)],
+                    lw=1.3, color='black', linestyle='-', marker="D", markersize=3)
+                self.signal_plot.text(
+                    x=(self.msmt.bandwidth_RCP_at_max_start
+                       + (self.msmt.bandwidth_RCP_at_max_stop
+                          - self.msmt.bandwidth_RCP_at_max_start) / 2),
+                    y=(self.msmt.Pxx_max_RCP - self.msmt.NdB_below),
+                    s='bandwidth\nat -' + str(self.msmt.NdB_below) + ' dB', **font_arial,
+                    fontsize=10, horizontalalignment='center',
+                    verticalalignment='center', color='black')
+                self.signal_plot.plot(
+                    [self.msmt.bandwidth_RCP_local_max_start,
+                     self.msmt.bandwidth_RCP_local_max_stop],
                     [(self.msmt.Pxx_local_max_RCP - self.msmt.NdB_below),
                      (self.msmt.Pxx_local_max_RCP - self.msmt.NdB_below)],
                     lw=1.3, color='black', linestyle='-', marker="D", markersize=3)
-                self.signal_plot.text(x=(self.msmt.bandwidth_RCP_local_max_start + (self.msmt.bandwidth_RCP_local_max_stop - self.msmt.bandwidth_RCP_local_max_start) / 2),
-                                      y=(self.msmt.Pxx_local_max_RCP - self.msmt.NdB_below),
-                                      s='bandwidth\nat -' + str(self.msmt.NdB_below) + ' dB',
-                                      **font_arial, fontsize=10,
-                                      horizontalalignment='center',
-                                      verticalalignment='center',
-                                      color='black')
+                self.signal_plot.text(
+                    x=(self.msmt.bandwidth_RCP_local_max_start
+                       + (self.msmt.bandwidth_RCP_local_max_stop
+                          - self.msmt.bandwidth_RCP_local_max_start) / 2),
+                    y=(self.msmt.Pxx_local_max_RCP - self.msmt.NdB_below),
+                    s='bandwidth\nat -' + str(self.msmt.NdB_below) + ' dB', **font_arial,
+                    fontsize=10, horizontalalignment='center',
+                    verticalalignment='center', color='black')
 
-                # testing
+                # check what the resampled signal looks like
                 # self.signal_plot.plot(self.msmt.resamp_freq, self.msmt.resamp_pxx, lw=0.2,
                 # color='green')
-
-                print()
-                self.msmt.pprint()
-                print()
 
             # draw canvas each frame
             self.draw()
@@ -611,5 +608,3 @@ class BSRAnimation(FigureCanvas):
             print("\n\n------------------\n  ANIMATION COMPLETED\n------------------ ")
             # animation completed, no frames remaining
             self.timer.stop()
-
-# https://matplotlib.org/3.1.1/gallery/user_interfaces/embedding_in_qt_sgskip.html

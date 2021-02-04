@@ -1,6 +1,6 @@
 """
 windows.py -- Links components of the graphical user interface.
-Copyright (C) 2020  Paul Sirri <paulsirri@gmail.com>
+Copyright (C) 2021  Paul Sirri <paulsirri@gmail.com>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -17,27 +17,30 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 # File Description:
-# This file contains the logic for linking together the components of
-# the graphical user interface. In the UI directory, custom PyQt5
-# QMainWindow classes are defined. Here, those custom classes are
-# wrapped, given functionality, and linked together.
+# This file contains the logic for linking together the components of the frontend.
+# In the UI directory (src/main/python/ui/) custom PyQt5 QMainWindow classes are defined.
+# Here, those custom classes are given functionality and linked together.
 
 
-from PyQt5.QtGui import QImage, QPixmap, QGuiApplication
-from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QMainWindow, QAbstractItemView, QTableWidget, \
-    QTableWidgetItem, QDialog, QProgressBar, QFileDialog
+from PyQt5.QtGui import QImage, QPixmap, QGuiApplication, QFont
+from PyQt5.QtCore import Qt, QTime, QDate, QDateTime
+from PyQt5.QtWidgets import QMainWindow, QAbstractItemView, QTableWidget, QTableWidgetItem, \
+    QDialog, QProgressBar, QFileDialog, QLabel, QGridLayout, QWidget, QDesktopWidget
 
 from ui.ui_20210125.StartScreen_v31 import Ui_MainWindow as Start_Ui
-# from ui.ui_20201106.FileSelection_v18_dawn import Ui_MainWindow as File_Ui
-from ui.ui_20200906.FileSelection_v13 import Ui_MainWindow as File_Ui
-from ui.ui_20210121.SignalAnalysis_v30 import Ui_MainWindow as Signal_Ui
-# from ui.ui_20210121.SignalAnalysis_v32 import Ui_MainWindow as Signal_Ui
+from ui.ui_20201106.FileSelection_v18_dawn import Ui_MainWindow as File_Ui_Standard
+from ui.ui_20200906.FileSelection_v13 import Ui_MainWindow as File_Ui_DetachedLabel
+# todo from ui.ui_20210121.SignalAnalysis_v30 import Ui_MainWindow as Signal_Ui
+from ui.ui_20210203.SignalAnalysis_v35 import Ui_MainWindow as Signal_Ui
+# from ui.ui_20210131.ExportMenu_v1 import Ui_MainWindow as ExportMenu_Ui
 from ui.ui_20210129.glucokeep_about import Ui_MainWindow as About_Ui
 
-from read_data import find_polar_pair, file_to_numpy, get_iq_data, get_files, get_sample_rate, DataLabel
-from process_signal import get_settings, ProgramSettings
+from read_data import find_polar_pair, file_to_numpy, get_iq_data, get_files, get_sample_rate, \
+    strftime_DOY, strftime_hhmmss, strftime_yyyyDOYhhmmss, strftime_yyyyDOYhhmmssff, \
+    strftime_yyyyDOY, strftime_timestamp, get_polar_compliment
+from process_signal import get_settings
 from analyze_plot import analyze_plot
+from astropy.time import Time, TimeDelta
 import numpy as np
 import time
 
@@ -50,7 +53,7 @@ from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as Navigatio
 
 class StartWindow(QMainWindow, Start_Ui):
     def __init__(self, ctx, *args, **kwargs):
-        super(StartWindow, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.ctx = ctx
         self.setupUi(self)
 
@@ -74,12 +77,12 @@ class StartWindow(QMainWindow, Start_Ui):
         self.btn_sourcecode.clicked.connect(self.show_sourcecode)
 
     def choose_dawn(self):
-        self.file_window = FileWindow(self.ctx, source='dawn')
+        self.file_window = FileWindowStandard(self.ctx, source='dawn')
         self.file_window.show()
         self.hide()
 
     def choose_rosetta(self):
-        self.file_window = FileWindow(self.ctx, source='rosetta')
+        self.file_window = FileWindowDetachedLabel(self.ctx, source='rosetta')
         self.file_window.show()
         self.hide()
 
@@ -121,7 +124,7 @@ class StartWindow(QMainWindow, Start_Ui):
 
 class ContactUsWindow(QMainWindow, About_Ui):
     def __init__(self, ctx, *args, **kwargs):
-        super(ContactUsWindow, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.ctx = ctx
         self.setupUi(self)
 
@@ -152,7 +155,7 @@ class ContactUsWindow(QMainWindow, About_Ui):
 
 class SourceCodeWindow(QMainWindow, About_Ui):
     def __init__(self, ctx, *args, **kwargs):
-        super(SourceCodeWindow, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.ctx = ctx
         self.setupUi(self)
 
@@ -178,19 +181,26 @@ class SourceCodeWindow(QMainWindow, About_Ui):
         self.close()
 
 
-class FileWindow(QMainWindow, File_Ui):
+class FileWindowDetachedLabel(QMainWindow, File_Ui_DetachedLabel):
     def __init__(self, ctx, source, *args, **kwargs):
-        super(FileWindow, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.ctx = ctx
         self.setupUi(self)
 
         # set the title
         self.setWindowTitle("PARSE - File Selection")
 
+        # set window size
+        w = round(1920 * 0.75)
+        h = round(1080 * 0.75)
+        self.resize(w, h)
+
+        # center window
+        center_window(self)
+
         # save session variables
         self.source = source
 
-        # todo:
         # read label files in directory, add to selection table
         self.data_labels = get_files(source, self.ctx)
         self.fill_table()
@@ -198,6 +208,7 @@ class FileWindow(QMainWindow, File_Ui):
         # when a row is clicked, pass file info to next window
         self.table_files.itemSelectionChanged.connect(self.display_label)
 
+        # keep track over which file the user highlighted
         self.selected_file = None
 
         # connect buttons
@@ -208,34 +219,52 @@ class FileWindow(QMainWindow, File_Ui):
 
     def fill_table(self):
         # format table
+        self.table_files.setFont(QFont("Monospace", 13))
+        self.lbl_quickview.setFont(QFont("Monospace", 12))
         column_names = ['File Name', 'Start Time', 'Stop Time', 'Band', 'Polarization']
         self.table_files.setColumnCount(5)
-        self.table_files.setRowCount(len(self.data_labels))
+        # add one row for every LCP/RCP file pair
+        items_count = len(self.data_labels)
+        if items_count % 2 == 1:
+            items_count += 1
+        self.table_files.setRowCount(items_count / 2)
         self.table_files.setHorizontalHeaderLabels(column_names)
 
+        # only add files as pairs
+        already_added = []
+
         # fill with file metadata
-        for row in range(len(self.data_labels)):
-            # set values for each item in row
-            self.table_files.setItem(row, 0, QTableWidgetItem(self.data_labels[row].file_name))
-            self.table_files.setItem(row, 1, QTableWidgetItem(str(
-                self.data_labels[row].start_time)))
-            self.table_files.setItem(row, 2, QTableWidgetItem(str(
-                self.data_labels[row].stop_time)))
-            self.table_files.setItem(row, 3, QTableWidgetItem(
-                self.data_labels[row].band_name))
-            self.table_files.setItem(row, 4, QTableWidgetItem(
-                self.data_labels[row].polarization))
+        for row in range(self.table_files.rowCount()):
+            for dl in self.data_labels:
+                if dl.file_name not in already_added:
+                    # add metadata for both RCP and LCP data pairs
+                    polar_partner = get_polar_compliment(dl, self.data_labels)
+                    already_added.append(dl.file_name)
+                    already_added.append(polar_partner.file_name)
+                    # set values for each item in row
+                    self.table_files.setItem(row, 0, QTableWidgetItem(
+                        dl.file_name + '\n' + polar_partner.file_name))
+                    self.table_files.setItem(row, 1, QTableWidgetItem(strftime_yyyyDOYhhmmss(
+                        dl.start_time) + '\n' + strftime_yyyyDOYhhmmss(polar_partner.start_time)))
+                    self.table_files.setItem(row, 2, QTableWidgetItem(strftime_yyyyDOYhhmmss(
+                        dl.stop_time) + '\n' + strftime_yyyyDOYhhmmss(polar_partner.stop_time)))
+                    self.table_files.setItem(row, 3, QTableWidgetItem(
+                        dl.band_name + '\n' + polar_partner.band_name))
+                    self.table_files.setItem(row, 4, QTableWidgetItem(
+                        dl.polarization + '\n' + polar_partner.polarization))
+                    break
+            for col in range(self.table_files.columnCount()):
+                self.table_files.setRowHeight(row, 50)
 
         # set QTableWidget formatting properties
         self.table_files.resizeColumnsToContents()
         self.table_files.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.table_files.setSelectionMode(QAbstractItemView.SingleSelection)
         self.table_files.setEditTriggers(QTableWidget.NoEditTriggers)
-
-        print("table filled")
 
     def display_label(self):
         for lbl in self.data_labels:
-            if lbl.file_name == self.table_files.selectedItems()[0].text():
+            if lbl.file_name in self.table_files.selectedItems()[0].text():
                 # the selected row matches a data_label object
                 self.selected_file = lbl
                 # some missions may not use label files
@@ -245,12 +274,117 @@ class FileWindow(QMainWindow, File_Ui):
                     file_contents = f.read()
                     f.close()
                     self.lbl_quickview.setText(file_contents)
-                print("selected label: " + str(self.selected_file.file_name))
 
     def back_to_start(self):
         self.start_window = StartWindow(self.ctx)
         self.start_window.show()
+        self.close()
+
+    def show_signal_window(self):
+        self.files_tuple = find_polar_pair(self.selected_file, self.data_labels)
+        self.signal_window = SignalWindow(self.ctx, self.source, self.files_tuple)
+        self.signal_window.show()
         self.hide()
+
+
+class FileWindowStandard(QMainWindow, File_Ui_Standard):
+    def __init__(self, ctx, source, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.ctx = ctx
+        self.setupUi(self)
+
+        # set the title
+        self.setWindowTitle("PARSE - File Selection")
+
+        # set window size
+        w = 800
+        h = 600
+        self.resize(w, h)
+
+        # center window
+        center_window(self)
+
+        # save session variables
+        self.source = source
+
+        # read label files in directory, add to selection table
+        self.data_labels = get_files(source, self.ctx)
+        self.fill_table()
+
+        # when a row is clicked, pass file info to next window
+        self.table_files.itemSelectionChanged.connect(self.display_label)
+
+        # keep track over which file the user highlighted
+        self.selected_file = None
+
+        # connect buttons
+        self.btn_back.clicked.connect(self.back_to_start)
+        self.btn_process.clicked.connect(self.show_signal_window)
+
+        # self.show()
+
+    def fill_table(self):
+        # format table
+        self.table_files.setFont(QFont("Monospace", 13))
+        # self.lbl_quickview.setFont(QFont("Monospace", 12))
+        column_names = ['File Name', 'Start Time', 'Stop Time', 'Band', 'Polarization']
+        self.table_files.setColumnCount(5)
+        # add one row for every LCP/RCP file pair
+        items_count = len(self.data_labels)
+        if items_count % 2 == 1:
+            items_count += 1
+        self.table_files.setRowCount(items_count / 2)
+        self.table_files.setHorizontalHeaderLabels(column_names)
+
+        # only add files as pairs
+        already_added = []
+
+        # fill with file metadata
+        for row in range(self.table_files.rowCount()):
+            for dl in self.data_labels:
+                if dl.file_name not in already_added:
+                    # add metadata for both RCP and LCP data pairs
+                    polar_partner = get_polar_compliment(dl, self.data_labels)
+                    already_added.append(dl.file_name)
+                    already_added.append(polar_partner.file_name)
+                    # set values for each item in row
+                    self.table_files.setItem(row, 0, QTableWidgetItem(
+                        dl.file_name + '\n' + polar_partner.file_name))
+                    self.table_files.setItem(row, 1, QTableWidgetItem(strftime_yyyyDOYhhmmss(
+                        dl.start_time) + '\n' + strftime_yyyyDOYhhmmss(polar_partner.start_time)))
+                    self.table_files.setItem(row, 2, QTableWidgetItem(strftime_yyyyDOYhhmmss(
+                        dl.stop_time) + '\n' + strftime_yyyyDOYhhmmss(polar_partner.stop_time)))
+                    self.table_files.setItem(row, 3, QTableWidgetItem(
+                        dl.band_name + '\n' + polar_partner.band_name))
+                    self.table_files.setItem(row, 4, QTableWidgetItem(
+                        dl.polarization + '\n' + polar_partner.polarization))
+                    break
+            for col in range(self.table_files.columnCount()):
+                self.table_files.setRowHeight(row, 50)
+
+        # set QTableWidget formatting properties
+        self.table_files.resizeColumnsToContents()
+        self.table_files.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.table_files.setSelectionMode(QAbstractItemView.SingleSelection)
+        self.table_files.setEditTriggers(QTableWidget.NoEditTriggers)
+
+    def display_label(self):
+        for lbl in self.data_labels:
+            if lbl.file_name in self.table_files.selectedItems()[0].text():
+                # the selected row matches a data_label object
+                self.selected_file = lbl
+                # some missions may not use label files
+                if lbl.path_to_label:
+                    # read the label file, print to UI
+                    f = open(lbl.path_to_label, 'r')
+                    file_contents = f.read()
+                    f.close()
+                    self.lbl_quickview.setText(file_contents)
+
+    def back_to_start(self):
+        self.start_window = StartWindow(self.ctx)
+        self.start_window.show()
+        self.close()
 
     def show_signal_window(self):
         self.files_tuple = find_polar_pair(self.selected_file, self.data_labels)
@@ -265,13 +399,22 @@ class SignalWindow(QMainWindow, Signal_Ui):
     signal_to_hide_analysis_results = QtCore.pyqtSignal()
 
     def __init__(self, ctx, source, files_tuple, *args, **kwargs):
-        super(SignalWindow, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.ctx = ctx
         self.setupUi(self)
 
         # set the title
         self.setWindowTitle("PARSE - Processing and Analysis")
 
+        # set window size
+        w = round(1920 * 0.80)
+        h = round(1080 * 0.80)
+        self.resize(w, h)
+
+        # center the window
+        center_window(self)
+
+        # set the default active tab to "Signal Processing"
         self.tab_widget.setTabEnabled(1, False)
 
         ###############################################
@@ -283,7 +426,6 @@ class SignalWindow(QMainWindow, Signal_Ui):
         toolbar = NavigationToolbar(self.animation_widget, self)
         self.vlayout_right.insertWidget(2, toolbar)
 
-        # TODO: thread to handle data ingestion
         # Create a WorkerDataIngestion object and a thread
         self.worker_dataingestion = WorkerDataIngestion()
         self.worker_dataingestion_thread = QtCore.QThread()
@@ -299,6 +441,7 @@ class SignalWindow(QMainWindow, Signal_Ui):
         # self.progress_window.activateWindow()
 
         # Connect signals & slots AFTER moving the object to the thread
+        # todo: make a method connect_signals_to_slots()
         # connect worker_dataingestion.signal_to_return_data (signal) to self.receive_data_from_worker (slot)
         self.worker_dataingestion.signal_to_return_data.connect(self.receive_data_from_worker)
         # connect worker_dataingestion.signal_progress_changed (signal) to self.progress_window.receive_progress (slot)
@@ -317,17 +460,21 @@ class SignalWindow(QMainWindow, Signal_Ui):
         # unpack selected files
         self.rcp_file, self.lcp_file = files_tuple
 
-        # initialize values to be returned by worker
+        # instantiate static attributes that will be returned by worker
         self.rcp_processed = None
         self.lcp_processed = None
         self.rcp_data = None
         self.lcp_data = None
         self.sample_rate = None
+
+        # instantiate signal processing parameters
         self.current_settings = None
         self.current_settings_rounded = None
+
+        # instantiate signal analysis parameters
         self.msmt = None
 
-        # TODO: receive data
+        # worker thread processes and returns plotting/animation data
         self.signal_to_run_worker.emit(self.rcp_file, self.lcp_file)
 
         # connect buttons for general interface
@@ -342,11 +489,10 @@ class SignalWindow(QMainWindow, Signal_Ui):
         self.btn_prev_frame.clicked.connect(self.pause_animation)
         self.btn_next_frame.clicked.connect(self.animation_widget.show_next_frame)
         self.btn_next_frame.clicked.connect(self.pause_animation)
+        # todo: connect export button self.btn_export.clicked.connect(self.function)
 
     def show_parameters(self, s):
         """ A method to set the value of each QSpinBox widget on the Signal Processing tab. """
-
-        print('SignalAnalysis.show_parameters()')
 
         # row 1 of Signal Processing tab
         self.line_edit_target.setText(s.target)
@@ -385,8 +531,12 @@ class SignalWindow(QMainWindow, Signal_Ui):
         self.spin_ymax.setValue(s.ylim_max)
 
         # row 10 of Signal Processing tab
-        self.spin_start_sec.setMaximum(np.floor((self.rcp_file.stop_time - self.rcp_file.start_time).to_value('sec') - s.seconds_for_welch))
-        self.spin_start_sec.setValue(s.start_sec_user)
+        # format the date/time widgets
+        datetime_pyqt = self.get_start_time(s)
+        self.spin_doy.setValue(int(datetime_pyqt.date().dayOfYear()))
+        self.dateTimeEdit.setDisplayFormat('hh:mm:ss')
+        self.dateTimeEdit.setDateTime(datetime_pyqt)
+        # set animation speed
         self.spin_ani_speed.setValue(round(1000 / s.interval, 2))
 
         # make a copy of these rounded values, in order to keep track of changes made by user
@@ -409,7 +559,8 @@ class SignalWindow(QMainWindow, Signal_Ui):
             'spin_xmax': self.spin_xmax.value(),
             'spin_ymin': self.spin_ymin.value(),
             'spin_ymax': self.spin_ymax.value(),
-            'spin_start_sec': self.spin_start_sec.value(),
+            'spin_doy': self.spin_doy.value(),
+            'dateTimeEdit': self.dateTimeEdit.dateTime(),
             'spin_ani_speed': self.spin_ani_speed.value(),
         }
 
@@ -495,9 +646,20 @@ class SignalWindow(QMainWindow, Signal_Ui):
             'spin_ymax']) + self.current_settings.ylim_max
 
         # row 10 of Signal Processing tab
-        start_sec_user = round(self.spin_start_sec.value())
+        # generate the user's requested start time, as a PyQt5 QDateTime() instance
+        datetime_pyqt = self.dateTimeEdit.dateTime()
+        doy = int(self.spin_doy.value())
+        doy_change = doy - datetime_pyqt.date().dayOfYear()
+        datetime_pyqt = datetime_pyqt.addDays(doy_change)
+        # the user's requested start time, represented as a string
+        datetime_string = datetime_pyqt.toString('yyyy-MM-dd hh:mm:ss')
+        # the user's requested start time, as an astropy Time() instance
+        datetime_astropy = Time.strptime(datetime_string, '%Y-%m-%d %H:%M:%S')
+        # the user's requested start time, as number of seconds since beginning of file
+        start_sec_user = round((datetime_astropy - self.rcp_file.start_time).to_value('sec'))
+
+        # convert fps to milliseconds
         frames_per_second = self.spin_ani_speed.value()
-        # convert to milliseconds
         interval = round(1000 / frames_per_second)
 
         # make new version of ProgramSettings
@@ -521,9 +683,9 @@ class SignalWindow(QMainWindow, Signal_Ui):
                                     ylim_min=ylim_min, ylim_max=ylim_max,
                                     start_sec_user=start_sec_user, interval=interval,
                                     file_start_time=self.rcp_file.start_time,
-                                    file_end_time=self.rcp_file.stop_time)
-
-        # TODO: use signal/slot
+                                    file_end_time=self.rcp_file.stop_time,
+                                    did_calculate_overview=True,
+                                    old_settings=self.current_settings)
 
         # keep track of current settings
         self.current_settings = new_settings
@@ -584,9 +746,6 @@ class SignalWindow(QMainWindow, Signal_Ui):
 
         # show new parameters to user
         self.show_parameters_plot_analysis(msmt)
-
-        # pass new parameters into animation widget, initialize plot
-        # TODO: send results to animation for plotting
 
         is_calculated = True
         if msmt.error_NdB_below:
@@ -665,12 +824,17 @@ class SignalWindow(QMainWindow, Signal_Ui):
         pass
 
     def back_to_files(self):
-        # FIXME: lambda signal/slot?
         print('SignalWindow.back_to_files(self)')
         self.pause_animation()
-        self.file_window = FileWindow(self.ctx, self.source)
-        self.file_window.show()
-        self.hide()
+        self.back_to_window = None
+        if self.source == 'rosetta':
+            self.back_to_window = FileWindowDetachedLabel(self.ctx, self.source)
+        elif self.source == 'dawn':
+            self.back_to_window = FileWindowStandard(self.ctx, self.source)
+        elif self.source == 'userfile':
+            self.back_to_window = StartWindow(self.ctx)
+        self.back_to_window.show()
+        self.close()
 
     def show_error_message(self, message):
         error_dialog = QtWidgets.QErrorMessage()
@@ -692,11 +856,32 @@ class SignalWindow(QMainWindow, Signal_Ui):
         seconds = seconds - (minutes * 60)
         return int(days), int(hours)
 
+    def get_start_time(self, s):
+        # the start time of the animation, as an astropy Time() instance
+        time_as_astropy = self.rcp_file.start_time + TimeDelta(s.start_sec_user, format='sec')
+
+        # the start time of the animation, as a string representation
+        time_as_string = strftime_timestamp(time_as_astropy)
+
+        # the start time of the animation, as a PyQt5 QDateTime() instance
+        time_as_pyqt = QDateTime.fromString(time_as_string, 'yyyy-MM-dd hh:mm:ss')
+
+        return time_as_pyqt
+
+    def set_min_and_max_limits(self):
+        """maximum_seconds = np.floor((self.rcp_file.stop_time - self.rcp_file.start_time).to_value('sec') - self.current_settings.seconds_for_welch)
+        maximum_seconds = TimeDelta(maximum_seconds, format='sec')
+        max_datetime = (self.rcp_file.start_time + maximum_seconds).strf('')"""
+        pass
+
     @QtCore.pyqtSlot(object)
     def receive_data_from_worker(self, data_tuple):
         """ A method to queue up frames for the animation to plot. """
 
+        # close the progress bar window
         self.progress_window.hide()
+
+        # unpack the tuple imported from the worker_dataingestion
         self.rcp_processed = data_tuple[0]
         self.lcp_processed = data_tuple[1]
         self.rcp_data = data_tuple[2]
@@ -704,11 +889,14 @@ class SignalWindow(QMainWindow, Signal_Ui):
         self.sample_rate = data_tuple[4]
         self.current_settings = data_tuple[5]
 
+        # set the minimum and maximum limits for each user parameter
+        self.set_min_and_max_limits()
+
         # show default parameters to user
-        self.show_parameters(data_tuple[5])
+        self.show_parameters(self.current_settings)
 
         # pass default parameters into animation widget, initialize plot
-        self.setup_animation(data_tuple[5], self.rcp_data, self.lcp_data)
+        self.setup_animation(self.current_settings, self.rcp_data, self.lcp_data)
 
 
 class WorkerDataIngestion(QtCore.QObject):
@@ -719,11 +907,10 @@ class WorkerDataIngestion(QtCore.QObject):
 
     def __init__(self, parent=None):
         # QtCore.QObject.__init__(self, parent=parent)
-        super(WorkerDataIngestion, self).__init__(parent)
+        super().__init__(parent)
 
     @QtCore.pyqtSlot(object, object)
     def run(self, rcp_file, lcp_file):
-        print('SLOT: WorkerDataIngestion.run(rcp_file, lcp_file)\n')
 
         # read data files into Numpy
         rcp_processed = file_to_numpy(rcp_file)
@@ -742,8 +929,6 @@ class WorkerDataIngestion(QtCore.QObject):
         sample_rate = get_sample_rate(rcp_processed, rcp_file.mission)
         self.signal_progress_changed.emit(70)
 
-        print('\n\nemitted 70...\n')
-
         # get all parameters for radar analysis pipeline, using RCP file to set default values
         s = get_settings(filenames=(rcp_file.file_name, lcp_file.file_name),
                          rcp_data=rcp_data,
@@ -753,13 +938,13 @@ class WorkerDataIngestion(QtCore.QObject):
                          global_time=rcp_file.start_time,
                          mission=rcp_file.mission,
                          file_start_time=rcp_file.start_time,
-                         file_end_time=rcp_file.stop_time)
-        print('\n\ngot settings...\n')
+                         file_end_time=rcp_file.stop_time,
+                         did_calculate_overview=False)
 
+        # include a split second delay to show the user the progress has finished
         self.signal_progress_changed.emit(95)
         time.sleep(0.20)
         self.signal_progress_changed.emit(100)
-        print('sleeping...')
         time.sleep(0.15)
 
         self.signal_to_return_data.emit((rcp_processed, lcp_processed, rcp_data, lcp_data,
@@ -774,7 +959,7 @@ class IngestionProgress(QDialog):
     """
 
     def __init__(self, parent=None):
-        super(IngestionProgress, self).__init__(parent)
+        super().__init__(parent)
         self.initUI()
         self.show()
 
@@ -789,16 +974,15 @@ class IngestionProgress(QDialog):
         x = (screen_geometry.width() - self.width()) / 2
         y = ((screen_geometry.height() - self.height()) / 2) - (screen_geometry.height() * 0.05)
         self.move(x, y)
-        print(screen_geometry.width())
-        print(screen_geometry.height())
-
-        # self.button = QPushButton('Start', self)
-        # self.button.move(0, 30)
-
-        # self.button.clicked.connect(self.onButtonClick)
 
     @QtCore.pyqtSlot(int)
     def receive_progress(self, count):
-        print(count)
         self.progress.setValue(count)
-        print('value: ', self.progress.value())
+
+
+def center_window(main_window):
+    # center the window
+    qtRectangle = main_window.frameGeometry()
+    centerPoint = QDesktopWidget().availableGeometry().center()
+    qtRectangle.moveCenter(centerPoint)
+    main_window.move(qtRectangle.topLeft())

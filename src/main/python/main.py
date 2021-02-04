@@ -1,6 +1,6 @@
 """
 main.py -- Launching point for automated distribution package (FBS).
-Copyright (C) 2020  Paul Sirri <paulsirri@gmail.com>
+Copyright (C) 2021  Paul Sirri <paulsirri@gmail.com>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -17,9 +17,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 # File Description:
-# The automated distribution package, Fman Build System (FBS),
-# requires the project repository contain a file named "main.py"
-# to launch the application. See https://build-system.fman.io
+# The automated distribution package, Fman Build System (FBS), requires the
+# project repository contain a file named "main.py" to launch the application.
+# See https://build-system.fman.io
 
 import sys
 from fbs_runtime.application_context.PyQt5 import ApplicationContext
