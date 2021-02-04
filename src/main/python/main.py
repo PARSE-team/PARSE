@@ -21,6 +21,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # project repository contain a file named "main.py" to launch the application.
 # See https://build-system.fman.io
 
+
 import sys
 from fbs_runtime.application_context.PyQt5 import ApplicationContext
 from PyQt5.QtGui import QImage

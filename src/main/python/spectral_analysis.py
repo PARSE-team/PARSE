@@ -19,6 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # File Description:
 # This file contains functions to generate results for the Spectral Analysis pipeline.
 
+
 import numpy as np
 from scipy import signal
 import copy
@@ -97,7 +98,7 @@ def set_value(value, default):
 
 # screen4results_v1.py
 def get_spectral_analysis_results(s, freqs, Pxx, freqs_LCP, Pxx_LCP, NdB_below=None,
-                                  freq_local_min=None,freq_local_max=None):
+                                  freq_local_min=None, freq_local_max=None):
     """
     A function that generates all results for the Signal Analysis pipeline.
 

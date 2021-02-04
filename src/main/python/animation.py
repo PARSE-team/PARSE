@@ -17,9 +17,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 # File Description:
-# This file defines a custom PyQt5 widget that dynamically visualizes data using the Matplotlib
-# backend (see documentation for Matplotlib's FigureCanvas class). It also defines a worker class
-# that generates data using multithreading so the GUI remains responsive.
+# This file defines a custom PyQt5 widget that dynamically visualizes data
+# using the Matplotlib backend (see documentation for Matplotlib's FigureCanvas
+# class). It also defines a worker class that generates data using multithreading
+# so the GUI remains responsive.
+
 
 import matplotlib
 
@@ -99,7 +101,7 @@ class WorkerDataGenerator(QtCore.QObject):
             self.update_counters()
 
             return rcp_x, rcp_y, lcp_x, lcp_y, files_label, time_label, current_index, \
-                current_second
+                   current_second
 
     def update_counters(self):
         """ A method that updates counters used to generate each frame. """
@@ -355,7 +357,7 @@ class BSRAnimation(FigureCanvas):
                     # can only rewind to the first data plot
                     self.frame_index -= 1
                     rcp_x, rcp_y, lcp_x, lcp_y, files_label, time_label, current_index, \
-                        current_second = self.plots[self.frame_index]
+                    current_second = self.plots[self.frame_index]
                 else:
                     print('cannot rewind further')
             elif plot_next_frame:
@@ -368,11 +370,11 @@ class BSRAnimation(FigureCanvas):
                     # there are plots in queue
                     self.frame_index += 1
                     rcp_x, rcp_y, lcp_x, lcp_y, files_label, time_label, current_index, \
-                        current_second = self.plots[self.frame_index]
+                    current_second = self.plots[self.frame_index]
             elif repeat:
                 # plot the same frame, without updating any counters
                 rcp_x, rcp_y, lcp_x, lcp_y, files_label, time_label, current_index, \
-                    current_second = self.plots[self.frame_index]
+                current_second = self.plots[self.frame_index]
             elif self.plots:
                 # samples remaining in file, draw next plot in queue or setup initial empty figure
                 # save recent plots so the user can rewind if needed
@@ -381,7 +383,7 @@ class BSRAnimation(FigureCanvas):
 
                 # worker_datagen thread has queued a plot, unpack result
                 rcp_x, rcp_y, lcp_x, lcp_y, files_label, time_label, current_index, \
-                    current_second = self.plots[self.frame_index]
+                current_second = self.plots[self.frame_index]
 
             elif not self.was_setup:
                 # FIXME: what's the point of having an initial empty frame?

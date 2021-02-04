@@ -466,8 +466,6 @@ class SignalWindow(QMainWindow, Signal_Ui):
         # worker thread processes and returns plotting/animation data
         self.signal_to_run_worker.emit(self.rcp_file, self.lcp_file)
 
-
-
     def show_parameters(self, s):
         """ A method to set the value of each QSpinBox widget on the Signal Processing tab. """
 
@@ -910,7 +908,6 @@ class WorkerDataIngestion(QtCore.QObject):
 
     @QtCore.pyqtSlot(object, object)
     def run(self, rcp_file, lcp_file):
-
         # read data files into Numpy
         rcp_processed = file_to_numpy(rcp_file)
         self.signal_progress.emit(10)
