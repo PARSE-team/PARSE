@@ -25,12 +25,14 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # the PDS3 documentation for more info). The aforementioned dependency is available at
 # https://github.com/mkelley/pds3
 
+
 import numpy as np
 from os import scandir
 from pds3_mkelley.pds3.core import read_label
 from astropy.time import Time
 from datetime import datetime, timedelta
 import time
+from PyQt5.QtCore import QDateTime
 
 
 class DataLabel:
@@ -227,8 +229,6 @@ def time_order(data_label):
 
 def find_polar_pair(chosen_file, dl_list):
     """ A function that pairs an RCP file to the corresponding LCP file. """
-
-    print('finding polar pair...')
 
     if chosen_file.mission == 'Rosetta':
         return find_polar_pair_rosetta(chosen_file, dl_list)
@@ -509,3 +509,19 @@ def strftime_yyyyDOY(astropy_datetime):
 
 def astropy_to_python(astropy_datetime):
     return datetime.strptime(str(astropy_datetime), '%Y-%m-%d %H:%M:%S.%f')
+
+
+def convert_astropy_to_pyqt(time_as_astropy):
+    # the start time of the animation, as a string representation
+    time_as_string = strftime_timestamp(time_as_astropy)
+    # the start time of the animation, as a PyQt5 QDateTime() instance
+    time_as_pyqt = QDateTime.fromString(time_as_string, 'yyyy-MM-dd hh:mm:ss')
+    return time_as_pyqt
+
+
+def convert_pyqt_to_astropy(datetime_pyqt):
+    # the user's requested start time, represented as a string
+    datetime_string = datetime_pyqt.toString('yyyy-MM-dd hh:mm:ss')
+    # the user's requested start time, as an astropy Time() instance
+    datetime_astropy = Time.strptime(datetime_string, '%Y-%m-%d %H:%M:%S')
+    return datetime_astropy

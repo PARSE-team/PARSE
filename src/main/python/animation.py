@@ -194,24 +194,26 @@ class BSRAnimation(FigureCanvas):
     def __init__(self, parent=None, width=5, height=4, dpi=100):
         print("\nBSRAnimation.__init__()")
 
-        # super(BSRAnimation, self).__init__(parent)
-
-        # instantiate artist containers
+        # instantiate figure
         self.fig = Figure(figsize=(width, height), dpi=dpi)
+
+        # instantiate subplots for the main signal and the overview plot
         self.signal_plot = self.fig.add_subplot(22, 1, (1, 14))
         self.overview_plot = self.fig.add_subplot(22, 1, (18, 20))
-        # self.toolbar = NavigationToolbar(self.canvas,self)
-        # gridlayout.addWidget(self.toolbar,0,0,1,2)
 
         # connect the Figure to the FigureCanvas (used for GUI only)
-        FigureCanvas.__init__(self, self.fig)
+        super(BSRAnimation, self).__init__(self.fig)
         self.setParent(parent)
 
-        # set the widget properties
-        FigureCanvas.setSizePolicy(self, QtWidgets.QSizePolicy.Expanding,
-                                   QtWidgets.QSizePolicy.Expanding)
+        # set minimum size possible without text on the plot overlapping
+        self.setMinimumSize(800, 600)
+
+        # set the widget size policies
+        FigureCanvas.setSizePolicy(
+            self, QtWidgets.QSizePolicy.MinimumExpanding, QtWidgets.QSizePolicy.MinimumExpanding)
         FigureCanvas.updateGeometry(self)
 
+        # timer to refresh each frame
         self.timer = QtCore.QTimer(self)
         self.timer.timeout.connect(self.update_frame)
 
@@ -432,7 +434,7 @@ class BSRAnimation(FigureCanvas):
             # plot signal data for current frame
             self.signal_plot.plot(rcp_x, rcp_y, lw=0.7, label='RCP', color='black')
             self.signal_plot.plot(lcp_x, lcp_y, lw=0.7, label='LCP', color='red')
-            self.signal_plot.legend(loc=2, fontsize=13)
+            self.signal_plot.legend(loc=2, fontsize=13, prop={"family": "Arial"})
 
             # mark the estimated direct signal
             # todo peak detection per frame

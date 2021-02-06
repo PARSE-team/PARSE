@@ -22,22 +22,22 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # Here, those custom classes are given functionality and linked together.
 
 
-from PyQt5.QtGui import QImage, QPixmap, QGuiApplication, QFont
+from PyQt5.QtGui import QImage, QPixmap, QGuiApplication, QFont, QColor
 from PyQt5.QtCore import Qt, QTime, QDate, QDateTime
 from PyQt5.QtWidgets import QMainWindow, QAbstractItemView, QTableWidget, QTableWidgetItem, \
     QDialog, QProgressBar, QFileDialog, QLabel, QGridLayout, QWidget, QDesktopWidget
 
-from ui.ui_20210125.StartScreen_v31 import Ui_MainWindow as Start_Ui
+from ui.ui_20210204.StartScreen_v32 import Ui_MainWindow as Start_Ui
 from ui.ui_20201106.FileSelection_v18_dawn import Ui_MainWindow as File_Ui_Standard
 from ui.ui_20200906.FileSelection_v13 import Ui_MainWindow as File_Ui_DetachedLabel
-# todo from ui.ui_20210121.SignalAnalysis_v30 import Ui_MainWindow as Signal_Ui
-from ui.ui_20210203.SignalAnalysis_v35 import Ui_MainWindow as Signal_Ui
+from ui.ui_20210204.SignalAnalysis_v36 import Ui_MainWindow as Signal_Ui
 # from ui.ui_20210131.ExportMenu_v1 import Ui_MainWindow as ExportMenu_Ui
 from ui.ui_20210129.glucokeep_about import Ui_MainWindow as About_Ui
 
 from read_data import find_polar_pair, file_to_numpy, get_iq_data, get_files, get_sample_rate, \
     strftime_DOY, strftime_hhmmss, strftime_yyyyDOYhhmmss, strftime_yyyyDOYhhmmssff, \
-    strftime_yyyyDOY, strftime_timestamp, get_polar_compliment
+    strftime_yyyyDOY, strftime_timestamp, get_polar_compliment, convert_astropy_to_pyqt, \
+    convert_pyqt_to_astropy
 from signal_processing import get_signal_processing_parameters
 from spectral_analysis import get_spectral_analysis_results
 from astropy.time import Time, TimeDelta
@@ -57,19 +57,38 @@ class StartWindow(QMainWindow, Start_Ui):
         self.ctx = ctx
         self.setupUi(self)
 
-        # set the title
+        # set the window title
         self.setWindowTitle("PARSE - Start")
 
+        # set window size
+        w = 700
+        h = 700
+        self.resize(w, h)
+
+        # center the window
+        center_window(self)
+
+        # format text
+        self.lbl_title.setStyleSheet('font-size: 22px; font: "Arial"')
+        self.lbl_version.setStyleSheet('font-size: 12px; font: "Arial"')
+        self.lbl_version.setText('Version 1\n2021.02.04')
+        self.lbl_open_desc.setStyleSheet('font-size: 14px; font: "Arial"')
+
+        # add the large PARSE graphic to be shown on the start window
         pixmap_parse_logo = QPixmap(QImage(self.ctx.img_parse_logo()))
-        pixmap_parse_logo = pixmap_parse_logo.scaled(350, 350, Qt.KeepAspectRatio)
+        pixmap_parse_logo = pixmap_parse_logo.scaled(
+            300, 300, Qt.KeepAspectRatio, Qt.SmoothTransformation)
         self.label_parselogo.setPixmap(pixmap_parse_logo)
         self.label_parselogo.setAlignment(Qt.AlignCenter)
 
+        # add the small USC logo to be shown on the start window
         pixmap_usc_logo = QPixmap(QImage(self.ctx.img_usc_logo()))
-        pixmap_usc_logo = pixmap_usc_logo.scaled(150, 150, Qt.KeepAspectRatio)
+        pixmap_usc_logo = pixmap_usc_logo.scaled(
+            130, 130, Qt.KeepAspectRatio, Qt.SmoothTransformation)
         self.label_usclogo.setPixmap(pixmap_usc_logo)
         self.label_usclogo.setAlignment(Qt.AlignRight | Qt.AlignBottom)
 
+        # connect signals and slots
         self.btn_dawnvesta.clicked.connect(self.choose_dawn)
         self.btn_rosetta.clicked.connect(self.choose_rosetta)
         # self.btn_userfile.clicked.connect(self.choose_userfile)
@@ -79,12 +98,12 @@ class StartWindow(QMainWindow, Start_Ui):
     def choose_dawn(self):
         self.file_window = FileWindowStandard(self.ctx, source='dawn')
         self.file_window.show()
-        self.hide()
+        self.close()
 
     def choose_rosetta(self):
         self.file_window = FileWindowDetachedLabel(self.ctx, source='rosetta')
         self.file_window.show()
-        self.hide()
+        self.close()
 
     def choose_userfile(self):
         # TODO: implement
@@ -105,7 +124,7 @@ class StartWindow(QMainWindow, Start_Ui):
             self.files_tuple = find_polar_pair(self.selected_file, self.data_labels)
             self.signal_window = SignalWindow(self.ctx, self.source, self.files_tuple)
             self.signal_window.show()
-            self.hide()
+            self.close()
         else:
             # TODO: implement error dialog
             print("directory error")"""
@@ -215,8 +234,6 @@ class FileWindowDetachedLabel(QMainWindow, File_Ui_DetachedLabel):
         self.btn_back.clicked.connect(self.back_to_start)
         self.btn_process.clicked.connect(self.show_signal_window)
 
-        # self.show()
-
     def fill_table(self):
         # format table
         self.table_files.setFont(QFont("Monospace", 13))
@@ -284,7 +301,7 @@ class FileWindowDetachedLabel(QMainWindow, File_Ui_DetachedLabel):
         self.files_tuple = find_polar_pair(self.selected_file, self.data_labels)
         self.signal_window = SignalWindow(self.ctx, self.source, self.files_tuple)
         self.signal_window.show()
-        self.hide()
+        self.close()
 
 
 class FileWindowStandard(QMainWindow, File_Ui_Standard):
@@ -320,8 +337,6 @@ class FileWindowStandard(QMainWindow, File_Ui_Standard):
         # connect buttons
         self.btn_back.clicked.connect(self.back_to_start)
         self.btn_process.clicked.connect(self.show_signal_window)
-
-        # self.show()
 
     def fill_table(self):
         # format table
@@ -390,7 +405,7 @@ class FileWindowStandard(QMainWindow, File_Ui_Standard):
         self.files_tuple = find_polar_pair(self.selected_file, self.data_labels)
         self.signal_window = SignalWindow(self.ctx, self.source, self.files_tuple)
         self.signal_window.show()
-        self.hide()
+        self.close()
 
 
 class SignalWindow(QMainWindow, Signal_Ui):
@@ -415,12 +430,16 @@ class SignalWindow(QMainWindow, Signal_Ui):
         center_window(self)
 
         # set the default active tab to "Signal Processing"
+        self.tab_widget.setCurrentIndex(0)
         self.tab_widget.setTabEnabled(1, False)
 
-        ###############################################
-        # set stylesheets
-        # self.group_aq_geometry.setStyleSheet()
-        ###############################################
+        # set spin boxes to ignore scroll events, so user doesn't change them accidentally
+        self.prevent_accidental_scroll_adjustments()
+
+        self.tab_widget.setMinimumWidth(490)
+
+        # format text labels in the interface
+        self.format_text_in_gui()
 
         # create toolbar, passing canvas as first parameter, then parent
         toolbar = NavigationToolbar(self.animation_widget, self)
@@ -467,52 +486,47 @@ class SignalWindow(QMainWindow, Signal_Ui):
         self.signal_to_run_worker.emit(self.rcp_file, self.lcp_file)
 
     def show_parameters(self, s):
-        """ A method to set the value of each QSpinBox widget on the Signal Processing tab. """
+        """ A method to set the current value for input widgets on the Signal Processing tab. """
 
-        # row 1 of Signal Processing tab
+        # row 1 of group: "Acquisition Geometry"
         self.line_edit_target.setText(s.target)
         self.line_edit_mission.setText(s.mission)
-
-        # row 2 of Signal Processing tab
+        # row 2 of group: "Acquisition Geometry"
         self.spin_occ_duration.setValue(np.floor(s.dt_occ / 60))
         self.spin_eq_radius.setValue(np.floor(s.radius_target / 1000))
-
-        # row 3 of Signal Processing tab
+        # row 3 of group: "Acquisition Geometry"
         self.spin_sc_velocity.setValue(s.v_sc_orbital)
         self.spin_lowest_alt.setValue(np.floor(s.altitude_sc / 1000))
 
-        # row 4 of Signal Processing tab
+        # row 1 of group: "Signal Processing Parameters"
         self.spin_freq_separation.setValue(s.df_calc)
         self.spin_freq_res.setValue(s.freq_res)
-
-        # row 5 of Signal Processing tab
+        # row 2 of group: "Signal Processing Parameters"
         self.spin_l_win.setValue(s.samples_per_raw_fft)
         self.spin_t_int.setValue(s.seconds_per_raw_fft)
-
-        # row 6 of Signal Processing tab
+        # row 3 of group: "Signal Processing Parameters"
         self.spin_k_spec.setValue(s.raw_fft_per_average)
         self.spin_timespan.setValue(s.seconds_for_welch)
-
-        # row 7 of Signal Processing tab
+        # row 4 of group: "Signal Processing Parameters"
         self.spin_moving_overlap.setValue(s.percent_window_per_hop)
         self.spin_t_hop.setValue(s.seconds_per_hop)
 
-        # row 8 of Signal Processing tab
+        # row 1 of group: "Animation Playback"
+        # display the start time of the animation
+        datetime_as_astropy = self.rcp_file.start_time + TimeDelta(s.start_sec_user, format='sec')
+        datetime_as_pyqt = convert_astropy_to_pyqt(datetime_as_astropy)
+        self.dateTimeEdit.setDateTime(datetime_as_pyqt)
+        self.dateTimeEdit.setDisplayFormat('hh:mm:ss')
+        self.spin_doy.setValue(int(datetime_as_pyqt.date().dayOfYear()))
+        # display animation speed
+        self.spin_ani_speed.setValue(round(1000 / s.interval, 2))
+
+        # row 1 of group: "Plot Window Properties"
         self.spin_xmin.setValue(s.xlim_min)
         self.spin_xmax.setValue(s.xlim_max)
-
-        # row 9 of Signal Processing tab
+        # row 2 of group: "Plot Window Properties"
         self.spin_ymin.setValue(s.ylim_min)
         self.spin_ymax.setValue(s.ylim_max)
-
-        # row 10 of Signal Processing tab
-        # format the date/time widgets
-        datetime_pyqt = self.get_start_time(s)
-        self.spin_doy.setValue(int(datetime_pyqt.date().dayOfYear()))
-        self.dateTimeEdit.setDisplayFormat('hh:mm:ss')
-        self.dateTimeEdit.setDateTime(datetime_pyqt)
-        # set animation speed
-        self.spin_ani_speed.setValue(round(1000 / s.interval, 2))
 
         # make a copy of these rounded values, in order to keep track of changes made by user
         self.current_settings_rounded = {
@@ -563,35 +577,30 @@ class SignalWindow(QMainWindow, Signal_Ui):
         self.animation_widget.plots = []
         self.animation_widget.frame_index = 0
 
-        # row 1 of Signal Processing tab
+        # row 1 of group: "Acquisition Geometry"
         target = self.line_edit_target.text()
         mission = self.line_edit_mission.text()
-
-        # row 2 of Signal Processing tab
+        # row 2 of group: "Acquisition Geometry"
         dt_occ = round(((self.spin_occ_duration.value() - self.current_settings_rounded[
             'spin_occ_duration']) * 60) + self.current_settings.dt_occ)
         radius_target = ((self.spin_eq_radius.value() - self.current_settings_rounded[
             'spin_eq_radius']) * 1000) + self.current_settings.radius_target
-
-        # row 3 of Signal Processing tab
+        # row 3 of group: "Acquisition Geometry"
         v_sc_orbital = (self.spin_sc_velocity.value() - self.current_settings_rounded[
             'spin_sc_velocity']) + self.current_settings.v_sc_orbital
         altitude_sc = ((self.spin_lowest_alt.value() - self.current_settings_rounded[
             'spin_lowest_alt']) * 1000) + self.current_settings.altitude_sc
 
-        # row 4 of Signal Processing tab
-        # df_calc = NOT ADJUSTABLE (self.spin_freq_separation.value())
+        # row 1 of group: "Signal Processing Parameters"
+        # NOT ADJUSTABLE: df_calc = (self.spin_freq_separation.value())
         freq_res = (self.spin_freq_res.value() - self.current_settings_rounded[
             'spin_freq_res']) + self.current_settings.freq_res
-
-        # row 5 of Signal Processing tab
-        # samples_per_raw_fft = NOT ADJUSTABLE (self.spin_l_win.value())
-        # seconds_per_raw_fft = NOT ADJUSTABLE (self.spin_t_int.value())
-
-        # row 6 of Signal Processing tab
+        # row 2 of group: "Signal Processing Parameters"
+        # NOT ADJUSTABLE:  samples_per_raw_fft = (self.spin_l_win.value())
+        # NOT ADJUSTABLE: seconds_per_raw_fft = (self.spin_t_int.value())
+        # row 3 of group: "Signal Processing Parameters"
         raw_fft_per_average = round((self.spin_k_spec.value() - self.current_settings_rounded[
             'spin_k_spec']) + self.current_settings.raw_fft_per_average)
-
         # handle specially, seconds_for_welch is dependent on, and a dependent of, other parameters
         if self.spin_timespan.value() != self.current_settings_rounded['spin_timespan']:
             # user manually entered value for seconds_for_welch, use to calculate other params
@@ -600,40 +609,33 @@ class SignalWindow(QMainWindow, Signal_Ui):
         else:
             # user did not adjust seconds_for_welch, just use defaults in calculations
             seconds_for_welch_user = None
-
-        # row 7 of Signal Processing tab
+        # row 4 of group: "Signal Processing Parameters"
         percent_window_per_hop = (self.spin_moving_overlap.value() - self.current_settings_rounded[
             'spin_moving_overlap']) + self.current_settings.percent_window_per_hop
-        # seconds_per_hop = NOT ADJUSTABLE (self.spin_t_hop.value())
+        # NOT ADJUSTABLE : seconds_per_hop = (self.spin_t_hop.value())
 
-        # row 8 of Signal Processing tab
+        # row 1a of group: "Animation Playback"
+        # the user's requested start time, as a PyQt5 QDateTime() instance
+        datetime_as_pyqt = self.get_requested_start_time()
+        # the user's requested start time, as an Astropy Time() instance
+        datetime_as_astropy = convert_pyqt_to_astropy(datetime_as_pyqt)
+        # the user's requested start time, as number of seconds since beginning of file
+        start_sec_user = round((datetime_as_astropy - self.rcp_file.start_time).to_value('sec'))
+        # row 1b of group: "Animation Playback"
+        # convert fps to milliseconds
+        frames_per_second = self.spin_ani_speed.value()
+        interval = round(1000 / frames_per_second)
+
+        # row 1 of group: "Plot Window Properties"
         xlim_min = (self.spin_xmin.value() - self.current_settings_rounded[
             'spin_xmin']) + self.current_settings.xlim_min
         xlim_max = (self.spin_xmax.value() - self.current_settings_rounded[
             'spin_xmax']) + self.current_settings.xlim_max
-
-        # row 9 of Signal Processing tab
+        # row 2 of group: "Plot Window Properties"
         ylim_min = (self.spin_ymin.value() - self.current_settings_rounded[
             'spin_ymin']) + self.current_settings.ylim_min
         ylim_max = (self.spin_ymax.value() - self.current_settings_rounded[
             'spin_ymax']) + self.current_settings.ylim_max
-
-        # row 10 of Signal Processing tab
-        # generate the user's requested start time, as a PyQt5 QDateTime() instance
-        datetime_pyqt = self.dateTimeEdit.dateTime()
-        doy = int(self.spin_doy.value())
-        doy_change = doy - datetime_pyqt.date().dayOfYear()
-        datetime_pyqt = datetime_pyqt.addDays(doy_change)
-        # the user's requested start time, represented as a string
-        datetime_string = datetime_pyqt.toString('yyyy-MM-dd hh:mm:ss')
-        # the user's requested start time, as an astropy Time() instance
-        datetime_astropy = Time.strptime(datetime_string, '%Y-%m-%d %H:%M:%S')
-        # the user's requested start time, as number of seconds since beginning of file
-        start_sec_user = round((datetime_astropy - self.rcp_file.start_time).to_value('sec'))
-
-        # convert fps to milliseconds
-        frames_per_second = self.spin_ani_speed.value()
-        interval = round(1000 / frames_per_second)
 
         # make new instance of SignalProcessing
         # get all parameters for radar analysis pipeline, using RCP file to set default values
@@ -827,17 +829,16 @@ class SignalWindow(QMainWindow, Signal_Ui):
         seconds = seconds - (minutes * 60)
         return int(days), int(hours)
 
-    def get_start_time(self, s):
-        # the start time of the animation, as an astropy Time() instance
-        time_as_astropy = self.rcp_file.start_time + TimeDelta(s.start_sec_user, format='sec')
-
-        # the start time of the animation, as a string representation
-        time_as_string = strftime_timestamp(time_as_astropy)
-
-        # the start time of the animation, as a PyQt5 QDateTime() instance
-        time_as_pyqt = QDateTime.fromString(time_as_string, 'yyyy-MM-dd hh:mm:ss')
-
-        return time_as_pyqt
+    def get_requested_start_time(self):
+        # get the requested start time, not accounting for date change
+        partial_datetime_pyqt = self.dateTimeEdit.dateTime()
+        # calculate how much the user changed the date
+        new_day_of_year = int(self.spin_doy.value())
+        old_day_of_year = partial_datetime_pyqt.date().dayOfYear()
+        doy_change = new_day_of_year - old_day_of_year
+        # add the date change
+        datetime_pyqt = partial_datetime_pyqt.addDays(doy_change)
+        return datetime_pyqt
 
     def set_min_and_max_limits(self):
         """maximum_seconds = np.floor((self.rcp_file.stop_time
@@ -871,12 +872,39 @@ class SignalWindow(QMainWindow, Signal_Ui):
         self.btn_next_frame.clicked.connect(self.pause_animation)
         # todo: connect export button self.btn_export.clicked.connect(self.function)
 
+    def prevent_accidental_scroll_adjustments(self):
+        # set spin boxes to ignore scroll events, so user doesn't change them accidentally
+        opts = QtCore.Qt.FindChildrenRecursively
+        spinboxes = self.findChildren(QtWidgets.QSpinBox, options=opts)
+        doublespinboxes = self.findChildren(QtWidgets.QDoubleSpinBox, options=opts)
+        datetimeedits = self.findChildren(QtWidgets.QDateTimeEdit, options=opts)
+        timeedits = self.findChildren(QtWidgets.QTimeEdit, options=opts)
+        for box in spinboxes:
+            box.wheelEvent = lambda *event: None
+        for box in doublespinboxes:
+            box.wheelEvent = lambda *event: None
+        for box in datetimeedits:
+            box.wheelEvent = lambda *event: None
+        for box in timeedits:
+            box.wheelEvent = lambda *event: None
+
+    def format_text_in_gui(self):
+        # some of the text labels in the frontend require rich text formatting
+        self.lbl_freq_separation.setText("Calc. freq. separation (<i>δf</i> ) (Hz)")
+        self.lbl_k_spec.setText("K (# spectra to average)")
+        self.lbl_t_int.setText("<i>τ</i><sub> int</sub> (seconds per FFT)")
+        self.lbl_t_hop.setText("Sliding window step-size (<i>t</i><sub> hop </sub>)")
+        self.lbl_graph_header.setStyleSheet('font-size: 20px; font: "Arial"; padding-top: 5px;')
+        # ensure the title text on tab is visible, this fixes a bug where the text was white
+        self.tab_widget.tabBar().setTabTextColor(0, QColor('black'))
+        self.tab_widget.tabBar().setTabTextColor(1, QColor('black'))
+
     @QtCore.pyqtSlot(object)
     def receive_data_from_worker(self, data_tuple):
-        """ A method to queue up frames for the animation to plot. """
+        """ A method to receive products from data ingestion worker and setup animation widget. """
 
         # close the progress bar window
-        self.progress_window.hide()
+        self.progress_window.close()
 
         # unpack the tuple imported from the worker_dataingestion
         self.rcp_processed = data_tuple[0]
