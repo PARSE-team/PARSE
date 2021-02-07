@@ -48,6 +48,83 @@ class AppContext(ApplicationContext):
             font-size: 13px;
             font: "Arial";
         }
+        QPushButton {
+            border: 1px solid #8f8f91;
+            border-radius: 3px;
+            background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
+                                              stop: 0 #f6f7fa, stop: 1 #dadbde);
+            min-width: 110px;
+            min-height: 40px;
+        }
+        QPushButton:pressed {
+            background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
+                                              stop: 0 #dadbde, stop: 1 #f6f7fa);
+        }
+        /* ---------- SET "APPLY" BUTTON TO BLUE ---------- */
+        #btn_apply_changes {
+            border: 1px solid darkblue;
+            border-radius: 5px;
+            background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
+                                              stop: 0 #e3e6fa, stop: 1 #c3c7db);
+            min-width: 110px;
+            min-height: 40px;
+        }
+        #btn_apply_changes:pressed {
+            background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
+                                              stop: 0 #c3c7db, stop: 1 #e3e6fa);
+        }
+        /* ---------- SET "PLAY" BUTTON TO GREEN ---------- */
+        #btn_play {
+            border: 1px solid #8f8f91;
+            border-radius: 3px;
+            background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
+                                              stop: 0 #e3fae5, stop: 1 #c3dbc6);
+            min-width: 110px;
+            min-height: 40px;
+        }
+        #btn_play:pressed {
+            background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
+                                              stop: 0 #c3dbc6, stop: 1 #e3fae5);
+        }
+        /* ---------- SET "PAUSE" BUTTON TO GREEN ---------- */
+        #btn_pause {
+            border: 1px solid #8f8f91;
+            border-radius: 3px;
+            background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
+                                              stop: 0 #fae3e3, stop: 1 #dbc3c3);
+            min-width: 110px;
+            min-height: 40px;
+        }
+        #btn_pause:pressed {
+            background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
+                                              stop: 0 #dbc3c3, stop: 1 #fae3e3);
+        }
+        /* ---------- SET STYLE FOR SCROLL BARS ---------- */
+        QScrollBar:vertical {              
+            border: 1px solid #999999;
+            background:white;
+            width: 7px;    
+            margin: 0px 0px 0px 0px;
+        }
+        QScrollBar::handle:vertical {
+            background: #6a6a6e;
+            min-height: 0px;
+            border-radius: 3px;
+        }
+        QScrollBar::add-line:vertical {
+            background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+            stop: 0 rgb(32, 47, 130), stop: 0.5 rgb(32, 47, 130),  stop:1 rgb(32, 47, 130));
+            height: 0px;
+            subcontrol-position: bottom;
+            subcontrol-origin: margin;
+        }
+        QScrollBar::sub-line:vertical {
+            background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+            stop: 0  rgb(32, 47, 130), stop: 0.5 rgb(32, 47, 130),  stop:1 rgb(32, 47, 130));
+            height: 0 px;
+            subcontrol-position: top;
+            subcontrol-origin: margin;
+        }
         /* ---------- (LEVEL 4) STYLE THE TAB WIDGET THAT CONTAINS SCROLLABLE AREAS ---------- */
         QTabWidget::pane {
           border: 1px solid darkgray; 
