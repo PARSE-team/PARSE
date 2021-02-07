@@ -60,6 +60,9 @@ class StartWindow(QMainWindow, Start_Ui):
         # set the window title
         self.setWindowTitle("PARSE - Start")
 
+        # set text to be selectable
+        set_text_selectable(self)
+
         # set window size
         w = 700
         h = 700
@@ -150,6 +153,9 @@ class ContactUsWindow(QMainWindow, About_Ui):
         # set the title
         self.setWindowTitle("PARSE  Contact Us")
 
+        # set text to be selectable
+        set_text_selectable(self)
+
         # connect UI elements using slots and signals
         self.pushButton.clicked.connect(self.back_to_menu)
 
@@ -181,6 +187,9 @@ class SourceCodeWindow(QMainWindow, About_Ui):
         # set the title
         self.setWindowTitle("PARSE  Source Code")
 
+        # set text to be selectable
+        set_text_selectable(self)
+
         # connect UI elements using slots and signals
         self.pushButton.clicked.connect(self.back_to_menu)
 
@@ -208,6 +217,9 @@ class FileWindowDetachedLabel(QMainWindow, File_Ui_DetachedLabel):
 
         # set the title
         self.setWindowTitle("PARSE - File Selection")
+
+        # set text to be selectable
+        set_text_selectable(self)
 
         # set window size
         w = round(1920 * 0.75)
@@ -312,6 +324,9 @@ class FileWindowStandard(QMainWindow, File_Ui_Standard):
 
         # set the title
         self.setWindowTitle("PARSE - File Selection")
+
+        # set text to be selectable
+        set_text_selectable(self)
 
         # set window size
         w = 800
@@ -420,6 +435,9 @@ class SignalWindow(QMainWindow, Signal_Ui):
 
         # set the title
         self.setWindowTitle("PARSE - Processing and Analysis")
+
+        # set text to be selectable
+        set_text_selectable(self)
 
         # set window size
         w = round(1920 * 0.80)
@@ -1011,3 +1029,11 @@ def center_window(main_window):
     centerPoint = QDesktopWidget().availableGeometry().center()
     qtRectangle.moveCenter(centerPoint)
     main_window.move(qtRectangle.topLeft())
+
+
+def set_text_selectable(window):
+    # set spin boxes to ignore scroll events, so user doesn't change them accidentally
+    opts = QtCore.Qt.FindChildrenRecursively
+    labels = window.findChildren(QtWidgets.QLabel, options=opts)
+    for box in labels:
+        box.setTextInteractionFlags(Qt.TextSelectableByMouse)
