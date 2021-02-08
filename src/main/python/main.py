@@ -54,7 +54,7 @@ class AppContext(ApplicationContext):
             background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
                                               stop: 0 #f6f7fa, stop: 1 #dadbde);
             min-width: 110px;
-            min-height: 40px;
+            min-height: 38px;
         }
         QPushButton:pressed {
             background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
@@ -73,7 +73,7 @@ class AppContext(ApplicationContext):
             background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
                                               stop: 0 #e3e6fa, stop: 1 #c3c7db);
             min-width: 110px;
-            min-height: 40px;
+            min-height: 38px;
         }
         #btn_apply_changes:pressed {
             background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
@@ -85,7 +85,7 @@ class AppContext(ApplicationContext):
             background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
                                               stop: 0 #e3e6fa, stop: 1 #c3c7db);
             min-width: 110px;
-            min-height: 40px;
+            min-height: 38px;
         }
         #btn_refresh_plot:pressed {
             background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
@@ -98,7 +98,7 @@ class AppContext(ApplicationContext):
             background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
                                               stop: 0 #e3fae5, stop: 1 #c3dbc6);
             min-width: 110px;
-            min-height: 40px;
+            min-height: 38px;
         }
         #btn_play:pressed {
             background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
@@ -111,7 +111,7 @@ class AppContext(ApplicationContext):
             background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
                                               stop: 0 #fae3e3, stop: 1 #dbc3c3);
             min-width: 110px;
-            min-height: 40px;
+            min-height: 38px;
         }
         #btn_pause:pressed {
             background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
@@ -121,7 +121,7 @@ class AppContext(ApplicationContext):
         QScrollBar:vertical {              
             border: 1px solid #999999;
             background:white;
-            width: 7px;    
+            width: 7px;
             margin: 0px 0px 0px 0px;
         }
         QScrollBar::handle:vertical {

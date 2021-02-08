@@ -426,7 +426,8 @@ class BSRAnimation(FigureCanvas):
                 current_second = self.s.stop_sec_count
                 current_index = self.s.stop_index_count
 
-                data_tuple = (rcp_x, rcp_y, lcp_x, lcp_y, files_label, time_label, current_index, current_second)
+                data_tuple = (rcp_x, rcp_y, lcp_x, lcp_y, files_label, time_label, current_index,
+                              current_second)
                 self.plots.append(data_tuple)
 
                 # only display an empty frame on the initial setup

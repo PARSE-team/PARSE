@@ -186,9 +186,12 @@ class TutorialWindow(QMainWindow, About_Ui):
         self.label_2.setOpenExternalLinks(True)
         self.label_2.setText(
             "<a href=https://www.youtube.com>https://www.youtube.com</a>")
+        self.label_2.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.LinksAccessibleByMouse)
 
-        # provide link to GitHub
         self.label_3.setText("")
+
+        # center the window
+        center_window(self)
 
     def back_to_menu(self):
         self.start_window = StartWindow(self.ctx)
@@ -217,10 +220,13 @@ class ManualWindow(QMainWindow, About_Ui):
         # provide link to email
         self.label_2.setOpenExternalLinks(True)
         self.label_2.setText(
-            "<a href=www.github.com>github</a>")
+            "<a href=https://github.com/PARSE-team/PARSE/blob/main/Manual.pdf>https://github.com/PARSE-team/PARSE/blob/main/Manual.pdf</a>")
+        self.label_2.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.LinksAccessibleByMouse)
 
-        # provide link to GitHub
         self.label_3.setText("")
+
+        # center the window
+        center_window(self)
 
     def back_to_menu(self):
         self.start_window = StartWindow(self.ctx)
@@ -250,8 +256,12 @@ class SourceCodeWindow(QMainWindow, About_Ui):
         self.label_2.setOpenExternalLinks(True)
         self.label_2.setText(
             "<a href=https://github.com/PARSE-team/PARSE>https://github.com/PARSE-team/PARSE</a>")
+        self.label_2.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.LinksAccessibleByMouse)
 
         self.label_3.setText("")
+
+        # center the window
+        center_window(self)
 
     def back_to_menu(self):
         self.start_window = StartWindow(self.ctx)
@@ -274,20 +284,133 @@ class PublicationsWindow(QMainWindow, About_Ui):
         # connect UI elements using slots and signals
         self.pushButton.clicked.connect(self.back_to_menu)
 
-        self.label.setText("Publications that contributed to the development of this product:")
+        # fill and format the publications
+        self.fill_in_publications()
 
-        # provide link to email
-        self.label_2.setOpenExternalLinks(True)
-        self.label_2.setText(
-            "<a href=https://doi.org/10.1038/s41467-017-00434-6>Palmer, Heggy & Kofman (2017)</a>")
+        # set window size
+        w = 500
+        h = 500
+        self.resize(w, h)
 
-        # provide link to GitHub
-        self.label_3.setText("")
+        # center the window
+        center_window(self)
 
     def back_to_menu(self):
         self.start_window = StartWindow(self.ctx)
         self.start_window.show()
         self.close()
+
+    def fill_in_publications(self):
+        """ A method to fill and format the contents of the publications window. """
+
+        self.verticalLayout.setSpacing(4)
+        self.verticalLayout.setContentsMargins(20, 0, 0, 0)  # (left, top, right, bottom)
+        self.label_2.setText('')
+        self.label_3.setText('')
+
+        self.label.setText("RELEVANT PUBLICATIONS:")
+        self.label.setStyleSheet('font-size: 17px; font: "Arial";')
+
+        # PyQt5 v5.9.2 has bug where whitespaces in text strings do not render correctly on MacOS
+        # manually replace these whitespace characters with white underscores ("_")
+        w = "< font color='White' size=3 ><sub>_</sub></font>"
+
+        recommended_label = QLabel('RECOMMENDED READING')
+        recommended_label.setStyleSheet('font-size: 13px; font: "Arial"; font-weight: bold;')
+        recommended_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        self.verticalLayout.insertWidget(4, recommended_label)
+        self.verticalLayout.insertWidget(5, QLabel(''))
+
+        pub1_desc = QLabel("Palmer,{}E.{}M.,{}Sirri,{}P.{}& Heggy,{}E.{}(2021).{}A User "
+                           "Interface for the Processing and Analysis of Deep Space Network "
+                           "Planetary Radio Science Data.{}SoftwareX "
+                           "(Elsevier).".format(w, w, w, w, w, w, w, w, w))
+        pub1_desc.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        pub1_link = QLabel('[Submitted for Review]')
+        # pub1_link.setOpenExternalLinks(True)
+        pub1_link.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.LinksAccessibleByMouse)
+        pub1_link.setStyleSheet('font-size: 13px; font: "Arial"; padding: 0px 0px 0px 34px;')
+        self.verticalLayout.insertWidget(6, pub1_desc)
+        self.verticalLayout.insertWidget(7, pub1_link)  # no link (yet!)
+        self.verticalLayout.insertWidget(8, QLabel(''))
+
+        pub2_desc = QLabel('Palmer,{}E.{}M.,{}Heggy,{}E.{}& Kofman,{}W.{}(2017).{}Orbital '
+                           'bistatic radar observations of asteroid Vesta by the Dawn '
+                           'mission.{}Nature Communications,{}8(409),{}1–12.{}[Open '
+                           'Access]'.format(w, w, w, w, w, w, w, w, w, w, w, w))
+        pub2_desc.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        pub2_link = QLabel('<a href=https://doi.org/10.1038/s41467-017-00434-6>'
+                           'doi:10.1038/s41467-017-00434-6</a>')
+        pub2_link.setOpenExternalLinks(True)
+        pub2_link.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.LinksAccessibleByMouse)
+        pub2_link.setStyleSheet('font-size: 13px; font: "Arial"; padding: 0px 0px 0px 34px;')
+        self.verticalLayout.insertWidget(9, pub2_desc)
+        self.verticalLayout.insertWidget(10, pub2_link)
+        self.verticalLayout.insertWidget(11, QLabel(''))
+
+        pub3_desc = QLabel('Palmer,{}E.{}M.{}& Heggy,{}E.{}(2020).{}Bistatic Radar Occultations '
+                           'of Planetary Surfaces.{}IEEE Geoscience & Remote Sensing '
+                           'Letters,{}17(5),{}804–808.'.format(w, w, w, w, w, w, w, w, w))
+        pub3_desc.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        pub3_link = QLabel('<a href=https://doi.org/10.1109/LGRS.2019.2931310>'
+                           'doi:10.1109/LGRS.2019.2931310</a>')
+        pub3_link.setOpenExternalLinks(True)
+        pub3_link.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.LinksAccessibleByMouse)
+        pub3_link.setStyleSheet('font-size: 13px; font: "Arial"; padding: 0px 0px 0px 34px;')
+        self.verticalLayout.insertWidget(12, pub3_desc)
+        self.verticalLayout.insertWidget(13, pub3_link)
+        self.verticalLayout.insertWidget(14, QLabel('\n'))
+
+        further_label = QLabel('FURTHER READING')
+        further_label.setStyleSheet('font-size: 13px; font: "Arial"; font-weight: bold;')
+        further_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        self.verticalLayout.insertWidget(15, further_label)
+        self.verticalLayout.insertWidget(16, QLabel(''))
+
+        pub4_desc = QLabel(
+            'Simpson,{}R.{}A.{}(1993).{}Spacecraft studies of planetary surfaces using bistatic '
+            'radar.{}IEEE Transactions on Geoscience and Remote '
+            'Sensing,{}31(2),{}465–482.'.format(w, w, w, w, w, w, w))
+        pub4_desc.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        pub4_link = QLabel(
+            '<a href=https://doi.org/10.1109/36.214923>doi:10.1109/36.214923</a>')
+        pub4_link.setOpenExternalLinks(True)
+        pub4_link.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.LinksAccessibleByMouse)
+        pub4_link.setStyleSheet('font-size: 13px; font: "Arial"; padding: 0px 0px 0px 34px;')
+        self.verticalLayout.insertWidget(17, pub4_desc)
+        self.verticalLayout.insertWidget(18, pub4_link)
+        self.verticalLayout.insertWidget(19, QLabel(''))
+
+        pub5_desc_a = QLabel(
+            "Simpson,{}R.{}A.,{}Tyler,{}G.{}L.,{}Pätzold,{}M.,{}Häusler,{}B.,{}Asmar,{}S.{}W.{}& "
+            "Sultan-Salem,{}A.{}K.{}(2011).{}Polarization in Bistatic Radar "
+            "Probing of Planetary".format(w, w, w, w, w, w, w, w, w, w, w, w, w, w, w, w, w))
+        pub5_desc_a.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        pub5_desc_b = QLabel(
+            "Surfaces: Application to Mars Express Data.{}Proceedings "
+            "of the IEEE,{}99(5),{}858–874.".format(w, w, w))
+        pub5_desc_b.setStyleSheet('font-size: 13px; font: "Arial"; padding: 0px 0px 0px 34px;')
+        pub5_desc_b.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        pub5_link = QLabel('<a href=https://doi.org/10.1109/JPROC.2011.2106190>'
+                           'doi:10.1109/JPROC.2011.2106190</a>')
+        pub5_link.setOpenExternalLinks(True)
+        pub5_link.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.LinksAccessibleByMouse)
+        pub5_link.setStyleSheet('font-size: 13px; font: "Arial"; padding: 0px 0px 0px 34px;')
+        self.verticalLayout.insertWidget(20, pub5_desc_a)
+        self.verticalLayout.insertWidget(21, pub5_desc_b)
+        self.verticalLayout.insertWidget(22, pub5_link)
+        self.verticalLayout.insertWidget(23, QLabel(''))
+
+        # add some more space
+        self.verticalLayout.insertWidget(2, QLabel(''))
+        self.verticalLayout.insertWidget(2, QLabel(''))
+
+        ########
+
+        """icon = QLabel()
+        icon.setAlignment(Qt.AlignLeft)
+        parent_container.insertWidget(3, icon)
+        parent_container.setSpacing(4)"""
 
 
 class ContactUsWindow(QMainWindow, About_Ui):
@@ -312,11 +435,16 @@ class ContactUsWindow(QMainWindow, About_Ui):
         self.label_2.setOpenExternalLinks(True)
         self.label_2.setText(
             "<a href=paulsirri@gmail.com>paulsirri@gmail.com</a>")
+        self.label_2.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.LinksAccessibleByMouse)
 
         # provide link to GitHub
         self.label_3.setOpenExternalLinks(True)
         self.label_3.setText(
             "<a href=https://github.com/PARSE-team/PARSE>https://github.com/PARSE-team/PARSE</a>")
+        self.label_3.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.LinksAccessibleByMouse)
+
+        # center the window
+        center_window(self)
 
     def back_to_menu(self):
         self.start_window = StartWindow(self.ctx)
@@ -993,25 +1121,34 @@ class SignalWindow(QMainWindow, Signal_Ui):
             'lbl_lowest_alt': 'spacecraft distance above target surface',
             'lbl_freq_separation': 'computed frequency difference between direct and echo signals',
             'lbl_freq_res': 'frequency resolution of the output plots',
-            'lbl_l_win': 'number of data points over which to perform an FFT (calculated from f_res)',
+            'lbl_l_win': 'number of data points over which to perform an FFT '
+                         '(calculated from f_res)',
             'lbl_t_int': 'FFT integration time',
             'lbl_k_spec': "number of FFT's to average together",
             'lbl_timespan': 'timespan of each frame produced on right',
-            'lbl_moving_overlap': 'step-size between each moving average window (percentage of window size)',
+            'lbl_moving_overlap': 'step-size between each moving average window '
+                                  '(percentage of window size)',
             'lbl_t_hop': 'calculated increment between each successive moving average window',
             'lbl_start_sec': 'use the overview plot as a reference in choosing the start time',
-            'label_2': 'peak widths can be compared when measured at the same dB below their peak (e.g., comparing their "10-dB bandwidth")',
-            'label_20': 'select the frequency range containing a potential echo signal but not the direct signal',
+            'label_2': 'peak widths can be compared when measured at the same dB below '
+                       'their peak (e.g., comparing their "10-dB bandwidth")',
+            'label_20': 'select the frequency range containing a potential echo signal '
+                        'but not the direct signal',
             'label_6': 'peak power in RCP (dB)',
             'label_7': 'frequency (Hz) of the main peak',
             'label_8': 'frequency width of the main peak (measured at N-dB below the peak)',
-            'label_9': 'detectable signal peaks are defined as being at least 3 dB greater than this noise level',
-            'label_10': 'the calculated, expected frequency difference between the direct and echo peaks',
+            'label_9': 'detectable signal peaks are defined as being at least 3 dB greater '
+                       'than this noise level',
+            'label_10': 'the calculated, expected frequency difference between the direct '
+                        'and echo peaks',
             'label_12': 'local maximum RCP power (dB) in the selected range',
             'label_13': 'center frequency (Hz) of the peak in the selected range',
-            'label_14': 'frequency width of the secondary RCP peak identified in the selected frequency range',
+            'label_14': 'frequency width of the secondary RCP peak identified in the selected '
+                        'frequency range',
             'label_16': 'difference in peak power of the two selected maxima (dB)',
-            'label_17': 'observed frequency difference between the two selected peaks (should be close to δf calc if the two peaks are accurately identified as the direct and echo signals)'
+            'label_17': 'observed frequency difference between the two selected '
+                        'peaks (should be close to δf calc if the two peaks are '
+                        'accurately identified as the direct and echo signals)'
         }
 
         self.add_info_icon(parent_container=self.horizontalLayout_10,
@@ -1248,11 +1385,20 @@ class IngestionProgress(QDialog):
 
 
 def center_window(main_window):
-    # center the window
-    qtRectangle = main_window.frameGeometry()
-    centerPoint = QDesktopWidget().availableGeometry().center()
-    qtRectangle.moveCenter(centerPoint)
-    main_window.move(qtRectangle.topLeft())
+    # geometry of the main window
+    qr = main_window.frameGeometry()
+    # center point of screen
+    cp = QDesktopWidget().availableGeometry().center()
+    # move rectangle's center point to screen's center point
+    qr.moveCenter(cp)
+    # top left of rectangle becomes top left of window centering it
+    main_window.move(qr.topLeft())
+
+    # alternative technique that similarly does not work if a window's children force it to expand
+    # qtRectangle = main_window.frameGeometry()
+    # centerPoint = QDesktopWidget().availableGeometry().center()
+    # qtRectangle.moveCenter(centerPoint)
+    # main_window.move(qtRectangle.topLeft())
 
 
 def set_text_selectable(window):
