@@ -30,7 +30,7 @@ from PyQt5.QtWidgets import QMainWindow, QAbstractItemView, QTableWidget, QTable
 from ui.ui_20210204.StartScreen_v32 import Ui_MainWindow as Start_Ui
 from ui.ui_20201106.FileSelection_v18_dawn import Ui_MainWindow as File_Ui_Standard
 from ui.ui_20200906.FileSelection_v13 import Ui_MainWindow as File_Ui_DetachedLabel
-from ui.ui_20210204.SignalAnalysis_v36 import Ui_MainWindow as Signal_Ui
+from ui.ui_20210204.SignalAnalysis_v37 import Ui_MainWindow as Signal_Ui
 # from ui.ui_20210131.ExportMenu_v1 import Ui_MainWindow as ExportMenu_Ui
 from ui.ui_20210129.glucokeep_about import Ui_MainWindow as About_Ui
 
@@ -91,12 +91,18 @@ class StartWindow(QMainWindow, Start_Ui):
         self.label_usclogo.setPixmap(pixmap_usc_logo)
         self.label_usclogo.setAlignment(Qt.AlignRight | Qt.AlignBottom)
 
+        self.btn_documentation.setText("User's Guide")
+
         # connect signals and slots
         self.btn_dawnvesta.clicked.connect(self.choose_dawn)
         self.btn_rosetta.clicked.connect(self.choose_rosetta)
-        # self.btn_userfile.clicked.connect(self.choose_userfile)
-        self.btn_contact.clicked.connect(self.show_contact)
+        self.btn_userfile.clicked.connect(self.choose_userfile)
+
+        self.btn_tutorial.clicked.connect(self.show_tutorial)
+        self.btn_documentation.clicked.connect(self.show_userguide)
         self.btn_sourcecode.clicked.connect(self.show_sourcecode)
+        self.btn_about.clicked.connect(self.show_publications)
+        self.btn_contact.clicked.connect(self.show_contact)
 
     def choose_dawn(self):
         self.file_window = FileWindowStandard(self.ctx, source='dawn')
@@ -133,14 +139,154 @@ class StartWindow(QMainWindow, Start_Ui):
             print("directory error")"""
         pass
 
-    def show_contact(self):
-        self.contact_window = ContactUsWindow(self.ctx)
-        self.contact_window.show()
+    def show_tutorial(self):
+        self.tutorial_window = TutorialWindow(self.ctx)
+        self.tutorial_window.show()
+        self.close()
+
+    def show_userguide(self):
+        self.userguide_window = ManualWindow(self.ctx)
+        self.userguide_window.show()
         self.close()
 
     def show_sourcecode(self):
         self.sourcecode_window = SourceCodeWindow(self.ctx)
         self.sourcecode_window.show()
+        self.close()
+
+    def show_publications(self):
+        self.publications_window = PublicationsWindow(self.ctx)
+        self.publications_window.show()
+        self.close()
+
+    def show_contact(self):
+        self.contact_window = ContactUsWindow(self.ctx)
+        self.contact_window.show()
+        self.close()
+
+
+class TutorialWindow(QMainWindow, About_Ui):
+    def __init__(self, ctx, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.ctx = ctx
+        self.setupUi(self)
+
+        # set the title
+        self.setWindowTitle("PARSE - Tutorial")
+
+        # set text to be selectable
+        set_text_selectable(self)
+
+        # connect UI elements using slots and signals
+        self.pushButton.clicked.connect(self.back_to_menu)
+
+        self.label.setText("A video tutorial is available through the Youtube link below:")
+
+        # provide link to email
+        self.label_2.setOpenExternalLinks(True)
+        self.label_2.setText(
+            "<a href=https://www.youtube.com>https://www.youtube.com</a>")
+
+        # provide link to GitHub
+        self.label_3.setText("")
+
+    def back_to_menu(self):
+        self.start_window = StartWindow(self.ctx)
+        self.start_window.show()
+        self.close()
+
+
+class ManualWindow(QMainWindow, About_Ui):
+    def __init__(self, ctx, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.ctx = ctx
+        self.setupUi(self)
+
+        # set the title
+        self.setWindowTitle("PARSE - Manual")
+
+        # set text to be selectable
+        set_text_selectable(self)
+
+        # connect UI elements using slots and signals
+        self.pushButton.clicked.connect(self.back_to_menu)
+
+        self.label.setText(
+            "A copy of the official User's Guide is available through the link below:")
+
+        # provide link to email
+        self.label_2.setOpenExternalLinks(True)
+        self.label_2.setText(
+            "<a href=www.github.com>github</a>")
+
+        # provide link to GitHub
+        self.label_3.setText("")
+
+    def back_to_menu(self):
+        self.start_window = StartWindow(self.ctx)
+        self.start_window.show()
+        self.close()
+
+
+class SourceCodeWindow(QMainWindow, About_Ui):
+    def __init__(self, ctx, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.ctx = ctx
+        self.setupUi(self)
+
+        # set the title
+        self.setWindowTitle("PARSE - Source Code")
+
+        # set text to be selectable
+        set_text_selectable(self)
+
+        # connect UI elements using slots and signals
+        self.pushButton.clicked.connect(self.back_to_menu)
+
+        self.label.setText("To view source code or learn more about PARSE,\n"
+                           "please visit the project's official GitHub page:")
+
+        # provide link to GitHub
+        self.label_2.setOpenExternalLinks(True)
+        self.label_2.setText(
+            "<a href=https://github.com/PARSE-team/PARSE>https://github.com/PARSE-team/PARSE</a>")
+
+        self.label_3.setText("")
+
+    def back_to_menu(self):
+        self.start_window = StartWindow(self.ctx)
+        self.start_window.show()
+        self.close()
+
+
+class PublicationsWindow(QMainWindow, About_Ui):
+    def __init__(self, ctx, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.ctx = ctx
+        self.setupUi(self)
+
+        # set the title
+        self.setWindowTitle("PARSE - Relevant Publications")
+
+        # set text to be selectable
+        set_text_selectable(self)
+
+        # connect UI elements using slots and signals
+        self.pushButton.clicked.connect(self.back_to_menu)
+
+        self.label.setText("Publications that contributed to the development of this product:")
+
+        # provide link to email
+        self.label_2.setOpenExternalLinks(True)
+        self.label_2.setText(
+            "<a href=https://doi.org/10.1038/s41467-017-00434-6>Palmer, Heggy & Kofman (2017)</a>")
+
+        # provide link to GitHub
+        self.label_3.setText("")
+
+    def back_to_menu(self):
+        self.start_window = StartWindow(self.ctx)
+        self.start_window.show()
         self.close()
 
 
@@ -151,7 +297,7 @@ class ContactUsWindow(QMainWindow, About_Ui):
         self.setupUi(self)
 
         # set the title
-        self.setWindowTitle("PARSE  Contact Us")
+        self.setWindowTitle("PARSE - Contact Us")
 
         # set text to be selectable
         set_text_selectable(self)
@@ -171,37 +317,6 @@ class ContactUsWindow(QMainWindow, About_Ui):
         self.label_3.setOpenExternalLinks(True)
         self.label_3.setText(
             "<a href=https://github.com/PARSE-team/PARSE>https://github.com/PARSE-team/PARSE</a>")
-
-    def back_to_menu(self):
-        self.start_window = StartWindow(self.ctx)
-        self.start_window.show()
-        self.close()
-
-
-class SourceCodeWindow(QMainWindow, About_Ui):
-    def __init__(self, ctx, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.ctx = ctx
-        self.setupUi(self)
-
-        # set the title
-        self.setWindowTitle("PARSE  Source Code")
-
-        # set text to be selectable
-        set_text_selectable(self)
-
-        # connect UI elements using slots and signals
-        self.pushButton.clicked.connect(self.back_to_menu)
-
-        self.label.setText("To view source code or learn more about PARSE,\n"
-                           "please visit the project's official GitHub page:")
-
-        # provide link to GitHub
-        self.label_2.setOpenExternalLinks(True)
-        self.label_2.setText(
-            "<a href=https://github.com/PARSE-team/PARSE>https://github.com/PARSE-team/PARSE</a>")
-
-        self.label_3.setText("")
 
     def back_to_menu(self):
         self.start_window = StartWindow(self.ctx)
@@ -439,6 +554,9 @@ class SignalWindow(QMainWindow, Signal_Ui):
         # set text to be selectable
         set_text_selectable(self)
 
+        # set tooltip descriptions for user input parameters
+        self.set_tooltips()
+
         # set window size
         w = round(1920 * 0.80)
         h = round(1080 * 0.80)
@@ -449,18 +567,19 @@ class SignalWindow(QMainWindow, Signal_Ui):
 
         # set the default active tab to "Signal Processing"
         self.tab_widget.setCurrentIndex(0)
-        self.tab_widget.setTabEnabled(1, False)
+        # self.tab_widget.setTabEnabled(1, False)
 
         # set spin boxes to ignore scroll events, so user doesn't change them accidentally
         self.prevent_accidental_scroll_adjustments()
 
-        self.tab_widget.setMinimumWidth(490)
+        self.tab_widget.setMinimumWidth(523)
 
         # format text labels in the interface
         self.format_text_in_gui()
 
         # create toolbar, passing canvas as first parameter, then parent
         toolbar = NavigationToolbar(self.animation_widget, self)
+        # toolbar.setStyleSheet("background-color:Gray;")
         self.vlayout_right.insertWidget(2, toolbar)
 
         # create a WorkerDataIngestion object and a thread
@@ -866,6 +985,109 @@ class SignalWindow(QMainWindow, Signal_Ui):
         max_datetime = (self.rcp_file.start_time + maximum_seconds).strf('')"""
         pass
 
+    def set_tooltips(self):
+
+        descriptions = {
+            'lbl_occ_duration': 'typically 1 min - 30 min or longer',
+            'lbl_sc_velocity': 'spacecraft orbital/flyby speed',
+            'lbl_lowest_alt': 'spacecraft distance above target surface',
+            'lbl_freq_separation': 'computed frequency difference between direct and echo signals',
+            'lbl_freq_res': 'frequency resolution of the output plots',
+            'lbl_l_win': 'number of data points over which to perform an FFT (calculated from f_res)',
+            'lbl_t_int': 'FFT integration time',
+            'lbl_k_spec': "number of FFT's to average together",
+            'lbl_timespan': 'timespan of each frame produced on right',
+            'lbl_moving_overlap': 'step-size between each moving average window (percentage of window size)',
+            'lbl_t_hop': 'calculated increment between each successive moving average window',
+            'lbl_start_sec': 'use the overview plot as a reference in choosing the start time',
+            'label_2': 'peak widths can be compared when measured at the same dB below their peak (e.g., comparing their "10-dB bandwidth")',
+            'label_20': 'select the frequency range containing a potential echo signal but not the direct signal',
+            'label_6': 'peak power in RCP (dB)',
+            'label_7': 'frequency (Hz) of the main peak',
+            'label_8': 'frequency width of the main peak (measured at N-dB below the peak)',
+            'label_9': 'detectable signal peaks are defined as being at least 3 dB greater than this noise level',
+            'label_10': 'the calculated, expected frequency difference between the direct and echo peaks',
+            'label_12': 'local maximum RCP power (dB) in the selected range',
+            'label_13': 'center frequency (Hz) of the peak in the selected range',
+            'label_14': 'frequency width of the secondary RCP peak identified in the selected frequency range',
+            'label_16': 'difference in peak power of the two selected maxima (dB)',
+            'label_17': 'observed frequency difference between the two selected peaks (should be close to δf calc if the two peaks are accurately identified as the direct and echo signals)'
+        }
+
+        self.add_info_icon(parent_container=self.horizontalLayout_10,
+                           parameter_description=descriptions['lbl_occ_duration'])
+        self.add_info_icon(parent_container=self.horizontalLayout_11,
+                           parameter_description=descriptions['lbl_sc_velocity'])
+        self.add_info_icon(parent_container=self.horizontalLayout_12,
+                           parameter_description=descriptions['lbl_lowest_alt'])
+        self.add_info_icon(parent_container=self.horizontalLayout_13,
+                           parameter_description=descriptions['lbl_freq_separation'])
+        self.add_info_icon(parent_container=self.horizontalLayout_14,
+                           parameter_description=descriptions['lbl_freq_res'])
+        self.add_info_icon(parent_container=self.horizontalLayout_15,
+                           parameter_description=descriptions['lbl_l_win'])
+        self.add_info_icon(parent_container=self.horizontalLayout_16,
+                           parameter_description=descriptions['lbl_t_int'])
+        self.add_info_icon(parent_container=self.horizontalLayout_17,
+                           parameter_description=descriptions['lbl_k_spec'])
+        self.add_info_icon(parent_container=self.horizontalLayout_18,
+                           parameter_description=descriptions['lbl_timespan'])
+        self.add_info_icon(parent_container=self.horizontalLayout_19,
+                           parameter_description=descriptions['lbl_moving_overlap'])
+        self.add_info_icon(parent_container=self.horizontalLayout_20,
+                           parameter_description=descriptions['lbl_t_hop'])
+        self.add_info_icon(parent_container=self.horizontalLayout_21,
+                           parameter_description=descriptions['lbl_start_sec'])
+
+        self.add_info_icon(parent_container=self.horizontalLayout_2,
+                           parameter_description=descriptions['label_2'])
+        self.add_info_icon(parent_container=self.horizontalLayout_22,
+                           parameter_description=descriptions['label_20'])
+        self.add_info_icon(parent_container=self.horizontalLayout_23,
+                           parameter_description=descriptions['label_6'])
+        self.add_info_icon(parent_container=self.horizontalLayout_24,
+                           parameter_description=descriptions['label_7'])
+        self.add_info_icon(parent_container=self.horizontalLayout_25,
+                           parameter_description=descriptions['label_8'])
+        self.add_info_icon(parent_container=self.horizontalLayout_26,
+                           parameter_description=descriptions['label_9'])
+        self.add_info_icon(parent_container=self.horizontalLayout_27,
+                           parameter_description=descriptions['label_10'])
+        self.add_info_icon(parent_container=self.horizontalLayout_28,
+                           parameter_description=descriptions['label_12'])
+        self.add_info_icon(parent_container=self.horizontalLayout_29,
+                           parameter_description=descriptions['label_13'])
+        self.add_info_icon(parent_container=self.horizontalLayout_30,
+                           parameter_description=descriptions['label_14'])
+        self.add_info_icon(parent_container=self.horizontalLayout_31,
+                           parameter_description=descriptions['label_16'])
+        self.add_info_icon(parent_container=self.horizontalLayout_32,
+                           parameter_description=descriptions['label_17'])
+
+    def add_info_icon(self, parent_container=None, parameter_description=None):
+        # retrieve the info icon image from resources and resize it
+        pixmap_icon = QPixmap(QImage(self.ctx.img_info_icon()))
+        pixmap_icon = pixmap_icon.scaled(
+            18, 18, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+
+        # make an empty label widget to use as a canvas
+        icon = QLabel()
+
+        # set the icon image
+        icon.setPixmap(pixmap_icon)
+        icon.setAlignment(Qt.AlignLeft | Qt.AlignBottom)
+
+        # set the string description of the parameter
+        icon.setToolTip(parameter_description)
+
+        if parent_container is self.horizontalLayout_2:
+            icon.setAlignment(Qt.AlignLeft)
+            parent_container.insertWidget(3, icon)
+            parent_container.setSpacing(4)
+        else:
+            parent_container.insertWidget(1, icon)
+            parent_container.setSpacing(4)
+
     def connect_signals_to_slots(self):
         """ A method to setup all PyQt5 signals/slot connections for this window during init. """
 
@@ -913,6 +1135,8 @@ class SignalWindow(QMainWindow, Signal_Ui):
         self.lbl_t_int.setText("<i>τ</i><sub> int</sub> (seconds per FFT)")
         self.lbl_t_hop.setText("Sliding window step-size (<i>t</i><sub> hop </sub>)")
         self.lbl_graph_header.setStyleSheet('font-size: 20px; font: "Arial"; padding-top: 5px;')
+        self.label_10.setText("ΔX Predicted (<i>δf</i><sub> calc</sub> )")
+        self.label_17.setText("ΔX Observed (<i>δf</i><sub> obsv</sub> )")
         # ensure the title text on tab is visible, this fixes a bug where the text was white
         self.tab_widget.tabBar().setTabTextColor(0, QColor('black'))
         self.tab_widget.tabBar().setTabTextColor(1, QColor('black'))

@@ -147,6 +147,9 @@ class WorkerDataGenerator(QtCore.QObject):
         # unpack all data, settings, and parameters required to generate plots
         self.setup(s, rcp_data, lcp_data)
 
+        # let the main thread generate the first plot
+        self.update_counters()
+
         # reset flags used to control this worker
         self.is_running = False
         self.is_killed = False
@@ -322,10 +325,12 @@ class BSRAnimation(FigureCanvas):
     def show_next_frame(self):
         self.pause()
         if self.frame_index == len(self.plots) - 1:
+            print('t1!')
             self.start_worker()
             time.sleep(0.5)
             self.pause_worker()
         elif (len(self.plots) - 1 - self.frame_index) < 10:
+            print('t2!')
             self.start_worker()
             time.sleep(0.1)
             self.pause_worker()
@@ -345,6 +350,8 @@ class BSRAnimation(FigureCanvas):
     def update_frame(self, plot_previous_frame=False, plot_next_frame=False, repeat=False,
                      results=False):
         """ A method to call each time the interval timer finishes. """
+        print('plots: ', len(self.plots))
+        print('frame index: ', self.frame_index)
 
         # choose what to draw on the FigureCanvas
         if (self.s.stop_index_count < self.rcp_data.size) and (self.plots or not self.was_setup):
@@ -354,30 +361,36 @@ class BSRAnimation(FigureCanvas):
             ####################################
 
             if plot_previous_frame:
+                print('---------- a')
                 # the user would like to redraw the previous frame
-                if self.frame_index > 1:
+                if self.frame_index > 0:
                     # can only rewind to the first data plot
                     self.frame_index -= 1
                     rcp_x, rcp_y, lcp_x, lcp_y, files_label, time_label, current_index, \
                     current_second = self.plots[self.frame_index]
                 else:
-                    print('cannot rewind further')
+                    rcp_x, rcp_y, lcp_x, lcp_y, files_label, time_label, current_index, \
+                    current_second = self.plots[self.frame_index]
             elif plot_next_frame:
+                print('---------- b')
                 if self.frame_index == len(self.plots) - 1:
                     print('no more frames ready')
                     self.start_worker()
                     time.sleep(0.5)
                     self.pause_worker()
                 if self.frame_index < len(self.plots) - 1:
+                    print('oops')
                     # there are plots in queue
                     self.frame_index += 1
                     rcp_x, rcp_y, lcp_x, lcp_y, files_label, time_label, current_index, \
                     current_second = self.plots[self.frame_index]
             elif repeat:
+                print('---------- c')
                 # plot the same frame, without updating any counters
                 rcp_x, rcp_y, lcp_x, lcp_y, files_label, time_label, current_index, \
                 current_second = self.plots[self.frame_index]
             elif self.plots:
+                print('---------- d')
                 # samples remaining in file, draw next plot in queue or setup initial empty figure
                 # save recent plots so the user can rewind if needed
 
@@ -388,25 +401,33 @@ class BSRAnimation(FigureCanvas):
                 current_second = self.plots[self.frame_index]
 
             elif not self.was_setup:
+                print('---------- e')
                 # FIXME: what's the point of having an initial empty frame?
 
                 self.frame_index = 0
-                self.plots.append((None, None))
 
-                # do not plot any data on the initial frame
-                rcp_x, rcp_y, lcp_x, lcp_y = [], [], [], []
+                # generate RCP and LCP data for this frame
+                rcp_x, rcp_y = get_psd(
+                    self.rcp_data[self.s.start_index_count:self.s.stop_index_count],
+                    self.s.sample_rate, self.s.samples_per_raw_fft, self.s.noverlap)
+                lcp_x, lcp_y = get_psd(
+                    self.lcp_data[self.s.start_index_count:self.s.stop_index_count],
+                    self.s.sample_rate, self.s.samples_per_raw_fft, self.s.noverlap)
 
+                # format labels for this frame
                 start = self.s.file_start_time + TimeDelta(self.s.start_sec_user, format='sec')
                 time_label = 'From: ' + strftime_yyyyDOYhhmmssff(start) \
                              + '\nTo:   ' + strftime_yyyyDOYhhmmssff(
                     start + TimeDelta(self.s.seconds_for_welch, format='sec'))
-
                 files_label = 'RCP file: ' + self.s.filenames[0] + '\nLCP file: ' + \
                               self.s.filenames[1]
 
-                # set index and second counters for the initial frame
+                # store copy of counters, then update them
+                current_second = self.s.stop_sec_count
                 current_index = self.s.stop_index_count
-                current_second = self.s.start_sec_count
+
+                data_tuple = (rcp_x, rcp_y, lcp_x, lcp_y, files_label, time_label, current_index, current_second)
+                self.plots.append(data_tuple)
 
                 # only display an empty frame on the initial setup
                 self.was_setup = True
@@ -417,191 +438,13 @@ class BSRAnimation(FigureCanvas):
                 rcp_x = rcp_y = lcp_x = lcp_y = files_label = time_label = current_index = \
                     current_second = None
 
+            print('plots: ', len(self.plots))
             print('frame index: ', self.frame_index)
 
-            # clear the active axes in figure
-            self.signal_plot.cla()
-            self.overview_plot.cla()
-
-            # set font
-            font_mono = {'fontname': 'monospace'}
-            font_arial = {'fontname': 'Arial'}
-
-            ################################################
-            # Plot the Power Spectral Density and Metadata
-            ################################################
-
-            # plot signal data for current frame
-            self.signal_plot.plot(rcp_x, rcp_y, lw=0.7, label='RCP', color='black')
-            self.signal_plot.plot(lcp_x, lcp_y, lw=0.7, label='LCP', color='red')
-            self.signal_plot.legend(loc=2, fontsize=13, prop={"family": "Arial"})
-
-            # mark the estimated direct signal
-            # todo peak detection per frame
-            # self.signal_plot.axvline(x=self.s.freq_plot_center, lw=0.1, color='blue')
-            if self.frame_index != 0:
-                direct_signal = rcp_x[np.argmax(rcp_y)]
-                self.signal_plot.axvline(x=direct_signal, lw=0.1, color='blue')
-
-            # plot labels to display metadata for this frame
-            self.signal_plot.patch.set_visible(False)
-            self.signal_plot.text(
-                0.26, 1.10, s=files_label, **font_mono, fontsize=10, horizontalalignment='center',
-                verticalalignment='center', transform=self.signal_plot.transAxes,
-                bbox=(dict(facecolor='white', alpha=0.2)))
-            self.signal_plot.text(
-                0.77, 1.10, s=time_label, **font_mono, fontsize=10, horizontalalignment='center',
-                verticalalignment='center',
-                transform=self.signal_plot.transAxes,
-                bbox=(dict(facecolor='white', alpha=0.2)))
-
-            # label the axes for the signal plot
-            self.signal_plot.set_xlabel("Frequency (Hz)", fontsize=15, **font_arial)
-            self.signal_plot.set_ylabel("Power (dB)", fontsize=15, **font_arial)
-
-            # reset the window properties, which are cleared each frame
-            self.signal_plot.set_xlim(self.s.xlim_min, self.s.xlim_max)
-            self.signal_plot.set_ylim(self.s.ylim_min, self.s.ylim_max)
-
-            ######################################################
-            # Plot the Direct Signal Over the Entire Time Series
-            ######################################################
-
-            # only setup the overview plot once per dataset
-            if not self.did_setup_timeseries:
-                # generate timeseries for x-axis, use native datetime module for MPL compatibility
-                timeseries_astropy = [(self.s.file_start_time + TimeDelta(str(sec), format='sec'))
-                                      for sec in self.s.overview_seconds]
-                self.timeseries = [astropy_to_python(t) for t in timeseries_astropy]
-                self.did_setup_timeseries = True
-
-            # plot the signal in file over time
-            self.overview_plot.plot_date(self.timeseries, self.s.overview_pxx,
-                                         ls='solid', lw=0.7, color='blue', markersize=0)
-
-            def format_date_major(x, y):
-                return matplotlib.dates.num2date(x).strftime('(%Y-%j)\n%H:%M:%S')
-
-            def format_date_minor(x, y):
-                return matplotlib.dates.num2date(x).strftime('%H:%M:%S')
-
-            # x-axis tick formatters
-            self.overview_plot.xaxis.set_major_formatter(ticker.FuncFormatter(format_date_major))
-            self.overview_plot.xaxis.set_minor_formatter(ticker.FuncFormatter(format_date_minor))
-
-            # x-axis tick locators
-            self.overview_plot.xaxis.set_major_locator(mdates.DayLocator(interval=1))  # each day
-            self.overview_plot.xaxis.set_minor_locator(
-                mdates.AutoDateLocator(interval_multiples=True))  # auto-select convenient interval
-
-            # x-axis tick parameters
-            self.overview_plot.tick_params(axis='x', which='minor', rotation=30)
-            self.overview_plot.tick_params(axis='x', which='major', pad=35, length=7)
-
-            # mark current frame's location in the time series
-            self.overview_plot.axvline(x=matplotlib.dates.date2num(astropy_to_python(
-                self.s.file_start_time + TimeDelta(current_second, format='sec'))),
-                lw=1.5, color='red')
-
-            # label the axes for the overview plot
-            self.overview_plot.set_xlabel("Time", fontsize=13, **font_arial)
-            self.overview_plot.set_ylabel(
-                "Max\nPower\n(dB)", fontsize=12, **font_arial, rotation=0, labelpad=33)
-            self.overview_plot.yaxis.set_label_coords(-0.1, 0)
-
-            # set padding options for both axes
-            seconds_domain = (self.s.file_end_time - self.s.file_start_time).to_value('sec')
-            time_pad = seconds_domain * 0.01
-            time_pad = TimeDelta(str(round(time_pad)), format='sec')
-            signal_range = np.max(self.s.overview_pxx) - np.min(self.s.overview_pxx)
-            signal_pad = signal_range * 0.1
-
-            # set the window properties
-            self.overview_plot.set_xlim(
-                matplotlib.dates.date2num(astropy_to_python(self.s.file_start_time)),
-                matplotlib.dates.date2num(astropy_to_python(self.s.file_end_time)))
-            self.overview_plot.set_ylim(
-                np.min(self.s.overview_pxx) - signal_pad, np.max(self.s.overview_pxx) + signal_pad)
-
-            # update the counter
-            self.s.stop_index_count = current_index
-
-            if results:
-                # mark and label the selected range
-                self.signal_plot.axvline(
-                    x=self.msmt.freq_local_min, lw=0.7, color='blue', linestyle='--')
-                self.signal_plot.axvline(
-                    x=self.msmt.freq_local_max, lw=0.7, color='blue', linestyle='--')
-                self.signal_plot.text(
-                    x=(((self.msmt.freq_local_max - self.msmt.freq_local_min) / 3)
-                       + self.msmt.freq_local_min),
-                    y=self.msmt.Pxx_max_RCP * 1.3, s='Selected Range', **font_arial, fontsize=10,
-                    horizontalalignment='center', verticalalignment='top', color='blue')
-
-                # mark and label both peaks
-                self.signal_plot.plot(
-                    [self.msmt.freq_at_max, self.msmt.freq_at_max], [-150, self.msmt.Pxx_max_RCP],
-                    lw=1.4, color='black', linestyle='-', marker="D", markersize=3)
-                self.signal_plot.text(
-                    x=self.msmt.freq_at_max, y=self.msmt.Pxx_max_RCP * 1.15, s='global max',
-                    fontsize=10, **font_arial, horizontalalignment='center',
-                    verticalalignment='top', color='black')
-                self.signal_plot.plot(
-                    [self.msmt.freq_at_local_max, self.msmt.freq_at_local_max],
-                    [-150, self.msmt.Pxx_local_max_RCP], lw=1.4, color='black',
-                    linestyle='-', marker="D", markersize=3)
-                self.signal_plot.text(
-                    x=self.msmt.freq_at_local_max, y=self.msmt.Pxx_local_max_RCP * 1.1,
-                    s='local max', **font_arial, fontsize=10, horizontalalignment='center',
-                    verticalalignment='top', color='black')
-
-                # mark and label delta-f
-                self.signal_plot.plot(
-                    [self.msmt.freq_at_max, self.msmt.freq_at_local_max],
-                    [(self.s.ylim_min + (self.s.ylim_max - self.s.ylim_min) * 0.1),
-                     (self.s.ylim_min + (self.s.ylim_max - self.s.ylim_min) * 0.1)],
-                    lw=1.4, color='black', linestyle='-', marker="D", markersize=4)
-                self.signal_plot.text(
-                    x=(np.max([self.msmt.freq_at_max, self.msmt.freq_at_local_max]) + 1),
-                    y=(self.s.ylim_min + (self.s.ylim_max - self.s.ylim_min) * 0.1),
-                    s='df', **font_arial, fontsize=11, horizontalalignment='right',
-                    verticalalignment='center', color='black')
-
-                # mark and label the bandwidth of both peaks
-                self.signal_plot.plot(
-                    [self.msmt.bandwidth_RCP_at_max_start, self.msmt.bandwidth_RCP_at_max_stop],
-                    [(self.msmt.Pxx_max_RCP - self.msmt.NdB_below),
-                     (self.msmt.Pxx_max_RCP - self.msmt.NdB_below)],
-                    lw=1.3, color='black', linestyle='-', marker="D", markersize=3)
-                self.signal_plot.text(
-                    x=(self.msmt.bandwidth_RCP_at_max_start
-                       + (self.msmt.bandwidth_RCP_at_max_stop
-                          - self.msmt.bandwidth_RCP_at_max_start) / 2),
-                    y=(self.msmt.Pxx_max_RCP - self.msmt.NdB_below),
-                    s='bandwidth\nat -' + str(self.msmt.NdB_below) + ' dB', **font_arial,
-                    fontsize=10, horizontalalignment='center',
-                    verticalalignment='center', color='black')
-                self.signal_plot.plot(
-                    [self.msmt.bandwidth_RCP_local_max_start,
-                     self.msmt.bandwidth_RCP_local_max_stop],
-                    [(self.msmt.Pxx_local_max_RCP - self.msmt.NdB_below),
-                     (self.msmt.Pxx_local_max_RCP - self.msmt.NdB_below)],
-                    lw=1.3, color='black', linestyle='-', marker="D", markersize=3)
-                self.signal_plot.text(
-                    x=(self.msmt.bandwidth_RCP_local_max_start
-                       + (self.msmt.bandwidth_RCP_local_max_stop
-                          - self.msmt.bandwidth_RCP_local_max_start) / 2),
-                    y=(self.msmt.Pxx_local_max_RCP - self.msmt.NdB_below),
-                    s='bandwidth\nat -' + str(self.msmt.NdB_below) + ' dB', **font_arial,
-                    fontsize=10, horizontalalignment='center',
-                    verticalalignment='center', color='black')
-
-                # check what the resampled signal looks like
-                # self.signal_plot.plot(self.msmt.resamp_freq, self.msmt.resamp_pxx, lw=0.2,
-                # color='green')
-
-            # draw canvas each frame
-            self.draw()
+            self.draw_frame(rcp_x=rcp_x, rcp_y=rcp_y, lcp_x=lcp_x, lcp_y=lcp_y,
+                            files_label=files_label, time_label=time_label,
+                            current_index=current_index, current_second=current_second,
+                            results=results)
 
         elif self.s.stop_index_count < self.rcp_data.size:
             # the animation is waiting for the worker_datagen thread to queue another plot
@@ -612,3 +455,190 @@ class BSRAnimation(FigureCanvas):
             print("\n\n------------------\n  ANIMATION COMPLETED\n------------------ ")
             # animation completed, no frames remaining
             self.timer.stop()
+
+    def draw_frame(self, rcp_x=None, rcp_y=None, lcp_x=None, lcp_y=None, files_label=None,
+                   time_label=None, current_index=None, current_second=None, results=None):
+        # clear the active axes in figure
+        self.signal_plot.cla()
+        self.overview_plot.cla()
+
+        # set font
+        font_mono = {'fontname': 'monospace'}
+        font_arial = {'fontname': 'Arial'}
+
+        ################################################
+        # Plot the Power Spectral Density and Metadata
+        ################################################
+
+        # plot signal data for current frame
+        self.signal_plot.plot(rcp_x, rcp_y, lw=0.7, label='RCP', color='black')
+        self.signal_plot.plot(lcp_x, lcp_y, lw=0.7, label='LCP', color='red')
+        self.signal_plot.legend(loc=2, fontsize=13, prop={"family": "Arial"})
+
+        # mark the estimated direct signal
+        # todo peak detection per frame
+        # self.signal_plot.axvline(x=self.s.freq_plot_center, lw=0.1, color='blue')
+        if self.frame_index != 0:
+            direct_signal = rcp_x[np.argmax(rcp_y)]
+            self.signal_plot.axvline(x=direct_signal, lw=0.1, color='blue')
+
+        # plot labels to display metadata for this frame
+        self.signal_plot.patch.set_visible(False)
+        self.signal_plot.text(
+            0.26, 1.10, s=files_label, **font_mono, fontsize=10, horizontalalignment='center',
+            verticalalignment='center', transform=self.signal_plot.transAxes,
+            bbox=(dict(facecolor='white', alpha=0.2)))
+        self.signal_plot.text(
+            0.77, 1.10, s=time_label, **font_mono, fontsize=10, horizontalalignment='center',
+            verticalalignment='center',
+            transform=self.signal_plot.transAxes,
+            bbox=(dict(facecolor='white', alpha=0.2)))
+
+        # label the axes for the signal plot
+        self.signal_plot.set_xlabel("Frequency (Hz)", fontsize=15, **font_arial)
+        self.signal_plot.set_ylabel("Power (dB)", fontsize=15, **font_arial)
+
+        # reset the window properties, which are cleared each frame
+        self.signal_plot.set_xlim(self.s.xlim_min, self.s.xlim_max)
+        self.signal_plot.set_ylim(self.s.ylim_min, self.s.ylim_max)
+
+        ######################################################
+        # Plot the Direct Signal Over the Entire Time Series
+        ######################################################
+
+        # only setup the overview plot once per dataset
+        if not self.did_setup_timeseries:
+            # generate timeseries for x-axis, use native datetime module for MPL compatibility
+            timeseries_astropy = [(self.s.file_start_time + TimeDelta(str(sec), format='sec'))
+                                  for sec in self.s.overview_seconds]
+            self.timeseries = [astropy_to_python(t) for t in timeseries_astropy]
+            self.did_setup_timeseries = True
+
+        # plot the signal in file over time
+        self.overview_plot.plot_date(self.timeseries, self.s.overview_pxx,
+                                     ls='solid', lw=0.7, color='blue', markersize=0)
+
+        def format_date_major(x, y):
+            return matplotlib.dates.num2date(x).strftime('(%Y-%j)\n%H:%M:%S')
+
+        def format_date_minor(x, y):
+            return matplotlib.dates.num2date(x).strftime('%H:%M:%S')
+
+        # x-axis tick formatters
+        self.overview_plot.xaxis.set_major_formatter(ticker.FuncFormatter(format_date_major))
+        self.overview_plot.xaxis.set_minor_formatter(ticker.FuncFormatter(format_date_minor))
+
+        # x-axis tick locators
+        self.overview_plot.xaxis.set_major_locator(mdates.DayLocator(interval=1))  # each day
+        self.overview_plot.xaxis.set_minor_locator(
+            mdates.AutoDateLocator(interval_multiples=True))  # auto-select convenient interval
+
+        # x-axis tick parameters
+        self.overview_plot.tick_params(axis='x', which='minor', rotation=30)
+        self.overview_plot.tick_params(axis='x', which='major', pad=35, length=7)
+
+        # mark current frame's location in the time series
+        self.overview_plot.axvline(x=matplotlib.dates.date2num(astropy_to_python(
+            self.s.file_start_time + TimeDelta(current_second, format='sec'))),
+            lw=1.5, color='red')
+
+        # label the axes for the overview plot
+        self.overview_plot.set_xlabel("Time", fontsize=13, **font_arial)
+        self.overview_plot.set_ylabel(
+            "Max\nPower\n(dB)", fontsize=12, **font_arial, rotation=0, labelpad=33)
+        self.overview_plot.yaxis.set_label_coords(-0.1, 0)
+
+        # set padding options for both axes
+        seconds_domain = (self.s.file_end_time - self.s.file_start_time).to_value('sec')
+        time_pad = seconds_domain * 0.01
+        time_pad = TimeDelta(str(round(time_pad)), format='sec')
+        signal_range = np.max(self.s.overview_pxx) - np.min(self.s.overview_pxx)
+        signal_pad = signal_range * 0.1
+
+        # set the window properties
+        self.overview_plot.set_xlim(
+            matplotlib.dates.date2num(astropy_to_python(self.s.file_start_time)),
+            matplotlib.dates.date2num(astropy_to_python(self.s.file_end_time)))
+        self.overview_plot.set_ylim(
+            np.min(self.s.overview_pxx) - signal_pad, np.max(self.s.overview_pxx) + signal_pad)
+
+        # update the counter
+        self.s.stop_index_count = current_index
+
+        if results:
+            # mark and label the selected range
+            range_pad = round((self.msmt.freq_local_max - self.msmt.freq_local_min) * 0.15)
+            self.signal_plot.axvline(
+                x=self.msmt.freq_local_min + range_pad, lw=0.7, color='blue', linestyle='--')
+            self.signal_plot.axvline(
+                x=self.msmt.freq_local_max - range_pad, lw=0.7, color='blue', linestyle='--')
+            self.signal_plot.text(
+                x=(((self.msmt.freq_local_max - self.msmt.freq_local_min) / 3)
+                   + self.msmt.freq_local_min),
+                y=self.msmt.Pxx_max_RCP * 1.3, s='Selected Range', **font_arial, fontsize=10,
+                horizontalalignment='center', verticalalignment='top', color='blue')
+
+            # mark and label both peaks
+            self.signal_plot.plot(
+                [self.msmt.freq_at_max, self.msmt.freq_at_max], [-150, self.msmt.Pxx_max_RCP],
+                lw=1.4, color='black', linestyle='-', marker="D", markersize=3)
+            # self.signal_plot.text(
+            #     x=self.msmt.freq_at_max, y=self.msmt.Pxx_max_RCP * 1.15, s='global max',
+            #     fontsize=10, **font_arial, horizontalalignment='center',
+            #     verticalalignment='top', color='black')
+            self.signal_plot.plot(
+                [self.msmt.freq_at_local_max, self.msmt.freq_at_local_max],
+                [-150, self.msmt.Pxx_local_max_RCP], lw=1.4, color='black',
+                linestyle='-', marker="D", markersize=3)
+            # self.signal_plot.text(
+            #     x=self.msmt.freq_at_local_max, y=self.msmt.Pxx_local_max_RCP * 1.1,
+            #     s='local max', **font_arial, fontsize=10, horizontalalignment='center',
+            #     verticalalignment='top', color='black')
+
+            # mark and label delta-f
+            self.signal_plot.plot(
+                [self.msmt.freq_at_max, self.msmt.freq_at_local_max],
+                [(self.s.ylim_min + (self.s.ylim_max - self.s.ylim_min) * 0.1),
+                 (self.s.ylim_min + (self.s.ylim_max - self.s.ylim_min) * 0.1)],
+                lw=1.4, color='black', linestyle='-', marker="D", markersize=4)
+            # self.signal_plot.text(
+            #     x=(np.max([self.msmt.freq_at_max, self.msmt.freq_at_local_max]) + 1),
+            #     y=(self.s.ylim_min + (self.s.ylim_max - self.s.ylim_min) * 0.1),
+            #     s='df', **font_arial, fontsize=11, horizontalalignment='right',
+            #     verticalalignment='center', color='black')
+
+            # mark and label the bandwidth of both peaks
+            self.signal_plot.plot(
+                [self.msmt.bandwidth_RCP_at_max_start, self.msmt.bandwidth_RCP_at_max_stop],
+                [(self.msmt.Pxx_max_RCP - self.msmt.NdB_below),
+                 (self.msmt.Pxx_max_RCP - self.msmt.NdB_below)],
+                lw=1.3, color='black', linestyle='-', marker="D", markersize=3)
+            # self.signal_plot.text(
+            #     x=(self.msmt.bandwidth_RCP_at_max_start
+            #        + (self.msmt.bandwidth_RCP_at_max_stop
+            #           - self.msmt.bandwidth_RCP_at_max_start) / 2),
+            #     y=(self.msmt.Pxx_max_RCP - self.msmt.NdB_below),
+            #     s='bandwidth\nat -' + str(self.msmt.NdB_below) + ' dB', **font_arial,
+            #     fontsize=10, horizontalalignment='center',
+            #     verticalalignment='center', color='black')
+            self.signal_plot.plot(
+                [self.msmt.bandwidth_RCP_local_max_start,
+                 self.msmt.bandwidth_RCP_local_max_stop],
+                [(self.msmt.Pxx_local_max_RCP - self.msmt.NdB_below),
+                 (self.msmt.Pxx_local_max_RCP - self.msmt.NdB_below)],
+                lw=1.3, color='black', linestyle='-', marker="D", markersize=3)
+            # self.signal_plot.text(
+            #     x=(self.msmt.bandwidth_RCP_local_max_start
+            #        + (self.msmt.bandwidth_RCP_local_max_stop
+            #           - self.msmt.bandwidth_RCP_local_max_start) / 2),
+            #     y=(self.msmt.Pxx_local_max_RCP - self.msmt.NdB_below),
+            #     s='bandwidth\nat -' + str(self.msmt.NdB_below) + ' dB', **font_arial,
+            #     fontsize=10, horizontalalignment='center',
+            #     verticalalignment='center', color='black')
+
+            # this is what the resampled signal looks like
+            # self.signal_plot.plot(self.msmt.resamp_freq, self.msmt.resamp_pxx, lw=0.2,
+            # color='green')
+
+        # draw canvas each frame
+        self.draw()

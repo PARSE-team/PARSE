@@ -60,7 +60,13 @@ class AppContext(ApplicationContext):
             background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
                                               stop: 0 #dadbde, stop: 1 #f6f7fa);
         }
-        /* ---------- SET "APPLY" BUTTON TO BLUE ---------- */
+        /* ---------- SET TOOLTIP FONT ---------- */
+        QToolTip { 
+            font-size: 13px;
+            font: "Arial";
+            padding: 3px;
+        }
+        /* ---------- SET "APPLY" and "REFRESH" BUTTONS ---------- */
         #btn_apply_changes {
             border: 1px solid darkblue;
             border-radius: 5px;
@@ -70,6 +76,18 @@ class AppContext(ApplicationContext):
             min-height: 40px;
         }
         #btn_apply_changes:pressed {
+            background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
+                                              stop: 0 #c3c7db, stop: 1 #e3e6fa);
+        }
+        #btn_refresh_plot {
+            border: 1px solid darkblue;
+            border-radius: 5px;
+            background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
+                                              stop: 0 #e3e6fa, stop: 1 #c3c7db);
+            min-width: 110px;
+            min-height: 40px;
+        }
+        #btn_refresh_plot:pressed {
             background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
                                               stop: 0 #c3c7db, stop: 1 #e3e6fa);
         }
@@ -86,7 +104,7 @@ class AppContext(ApplicationContext):
             background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
                                               stop: 0 #c3dbc6, stop: 1 #e3fae5);
         }
-        /* ---------- SET "PAUSE" BUTTON TO GREEN ---------- */
+        /* ---------- SET "PAUSE" BUTTON TO RED ---------- */
         #btn_pause {
             border: 1px solid #8f8f91;
             border-radius: 3px;
@@ -128,21 +146,24 @@ class AppContext(ApplicationContext):
         /* ---------- (LEVEL 4) STYLE THE TAB WIDGET THAT CONTAINS SCROLLABLE AREAS ---------- */
         QTabWidget::pane {
           border: 1px solid darkgray; 
+          border-radius: 3px;
           top:-1px; 
           background: rgb(230, 230, 230);
         } 
         QTabBar::tab {
           background: rgb(200, 200, 200); 
+          border-radius: 3px;
           border: 1px solid darkgray; 
           padding: 15px;
         } 
         QTabBar::tab:selected { 
           background: rgb(230, 230, 230); 
-          margin-bottom: -1px; 
+          margin-bottom: -3px; 
         }
         /* make non-selected tabs look smaller */
         QTabBar::tab:!selected {
             margin-top: 8px;
+            margin-bottom: -3px; 
         }
         /* ---------- (LEVEL 3) STYLE THE SCROLLABLE AREAS THAT CONTAIN GROUPBOXES ---------- */
         QScrollArea#scrollArea {
@@ -209,6 +230,11 @@ class AppContext(ApplicationContext):
     def img_custom_logo(self):
         # load the custom PARSE icon graphic, unused at present (02.2021)
         return QImage(self.get_resource('custom_logo_256.png'))
+
+    # todo: cached?
+    def img_info_icon(self):
+        # load the info icon graphic, used for tooltips
+        return QImage(self.get_resource('info_icon.png'))
 
 
 if __name__ == '__main__':
