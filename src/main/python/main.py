@@ -64,7 +64,7 @@ class AppContext(ApplicationContext):
         QToolTip { 
             font-size: 13px;
             font: "Arial";
-            padding: 3px;
+            padding: 4px;
         }
         /* ---------- SET "APPLY" and "REFRESH" BUTTONS ---------- */
         #btn_apply_changes {
