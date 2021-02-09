@@ -472,9 +472,9 @@ class BSRAnimation(FigureCanvas):
         ################################################
 
         # plot signal data for current frame
-        self.signal_plot.plot(rcp_x, rcp_y, lw=0.7, label='RCP', color='black')
-        self.signal_plot.plot(lcp_x, lcp_y, lw=0.7, label='LCP', color='red')
-        self.signal_plot.legend(loc=2, fontsize=13, prop={"family": "Arial"})
+        self.signal_plot.plot(rcp_x, rcp_y, lw=0.7, label='RCP', color='black', zorder=25)
+        self.signal_plot.plot(lcp_x, lcp_y, lw=0.7, label='LCP', color='red', zorder=20)
+        self.signal_plot.legend(loc=2, fontsize=14, prop={"family": "Arial"})
 
         # mark the estimated direct signal
         # todo peak detection per frame
@@ -516,8 +516,10 @@ class BSRAnimation(FigureCanvas):
             self.did_setup_timeseries = True
 
         # plot the signal in file over time
-        self.overview_plot.plot_date(self.timeseries, self.s.overview_pxx,
-                                     ls='solid', lw=0.7, color='blue', markersize=0)
+        self.overview_plot.plot_date(self.timeseries, self.s.overview_pxx_rcp,
+                                     ls='solid', lw=0.5, color='black', markersize=0, zorder=25)
+        self.overview_plot.plot_date(self.timeseries, self.s.overview_pxx_lcp,
+                                     ls='solid', lw=0.5, color='red', markersize=0, zorder=20)
 
         def format_date_major(x, y):
             return matplotlib.dates.num2date(x).strftime('(%Y-%j)\n%H:%M:%S')
@@ -541,7 +543,7 @@ class BSRAnimation(FigureCanvas):
         # mark current frame's location in the time series
         self.overview_plot.axvline(x=matplotlib.dates.date2num(astropy_to_python(
             self.s.file_start_time + TimeDelta(current_second, format='sec'))),
-            lw=1.5, color='red')
+            lw=1.5, color='blue')
 
         # label the axes for the overview plot
         self.overview_plot.set_xlabel("Time", fontsize=13, **font_arial)
@@ -553,7 +555,7 @@ class BSRAnimation(FigureCanvas):
         seconds_domain = (self.s.file_end_time - self.s.file_start_time).to_value('sec')
         time_pad = seconds_domain * 0.01
         time_pad = TimeDelta(str(round(time_pad)), format='sec')
-        signal_range = np.max(self.s.overview_pxx) - np.min(self.s.overview_pxx)
+        signal_range = np.max(self.s.overview_pxx_rcp) - np.min(self.s.overview_pxx_rcp)
         signal_pad = signal_range * 0.1
 
         # set the window properties
@@ -561,7 +563,8 @@ class BSRAnimation(FigureCanvas):
             matplotlib.dates.date2num(astropy_to_python(self.s.file_start_time)),
             matplotlib.dates.date2num(astropy_to_python(self.s.file_end_time)))
         self.overview_plot.set_ylim(
-            np.min(self.s.overview_pxx) - signal_pad, np.max(self.s.overview_pxx) + signal_pad)
+            np.min(self.s.overview_pxx_rcp) - signal_pad,
+            np.max(self.s.overview_pxx_rcp) + signal_pad)
 
         # update the counter
         self.s.stop_index_count = current_index

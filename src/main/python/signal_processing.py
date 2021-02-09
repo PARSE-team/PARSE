@@ -84,10 +84,12 @@ class SignalProcessing:
 
         # Signal Overview Calculation
         self.overview_seconds = None
-        self.overview_pxx = None
+        self.overview_pxx_rcp = None
+        self.overview_pxx_lcp = None
         self.overview_freqs = None
         self.pxx_min = None
         self.pxx_max = None
+        self.signal_detected = None
 
         # Acquisition Geometry
         self.target = None
@@ -133,7 +135,7 @@ def get_psd(data, sample_rate, samples_per_raw_fft, noverlap):
 
 
 def get_signal_overview(rcp_data, lcp_data, samples_for_welch, sample_rate, samples_per_raw_fft,
-                        noverlap, samples_per_hop, mission, rate=25):
+                        noverlap, samples_per_hop, df_calc, rate=25):
     """
     The "signal overview plot" displays the power (dB) of the direct signal over
     the entire timeseries, so the user can easily identify when an occultation
@@ -160,42 +162,56 @@ def get_signal_overview(rcp_data, lcp_data, samples_for_welch, sample_rate, samp
     start_i = 0
     stop_i = samples_for_welch
     overview_seconds = []
-    overview_pxx = []
+    overview_pxx_rcp = []
+    overview_pxx_lcp = []
     overview_freqs = []
+    signal_detected = []
     pxx_min = 0
+    noise_var = None
 
+    # loop over the entire dataset at the given rate
     while stop_i < rcp_data.size:
-        # generate RCP and LCP data for plotting each frame
+        # for each loop, generate PSD data for each frame
         rcp_x, rcp_y = get_psd(
             rcp_data[start_i:stop_i], sample_rate, samples_per_raw_fft, noverlap)
         lcp_x, lcp_y = get_psd(
             lcp_data[start_i:stop_i], sample_rate, samples_per_raw_fft, noverlap)
 
         # find direct signal
-        if mission == 'Rosetta':
-            # avoid recognizing a false peak in the Rosetta dataset
-            where_to_look = np.max(np.argwhere(rcp_x < -1))
-            max_signal = np.max([np.max(rcp_y[0:where_to_look]), np.max(lcp_y[0:where_to_look])])
-            freq_of_max = None
-            if max_signal == np.max(rcp_y[0:where_to_look]):
-                argmax = np.argmax(rcp_y[0:where_to_look])
-                freq_of_max = rcp_x[argmax]
-            elif max_signal == np.max(lcp_y[0:where_to_look]):
-                argmax = np.argmax(lcp_y[0:where_to_look])
-                freq_of_max = lcp_x[argmax]
-            else:
-                print('ERROR FINDING DIRECT SIGNAL')
-        elif mission == 'Dawn':
-            max_signal = np.max([np.max(rcp_y), np.max(lcp_y)])
-            freq_of_max = None
-            if max_signal == np.max(rcp_y):
-                argmax = np.argmax(rcp_y)
-                freq_of_max = rcp_x[argmax]
-            elif max_signal == np.max(lcp_y):
-                argmax = np.argmax(lcp_y)
-                freq_of_max = lcp_x[argmax]
-            else:
-                print('ERROR FINDING DIRECT SIGNAL')
+        max_signal = np.max([np.max(rcp_y), np.max(lcp_y)])
+        max_signal_rcp = None
+        max_signal_lcp = None
+        freq_of_max = None
+        if max_signal == np.max(rcp_y):
+            freq_of_max = rcp_x[rcp_y.argmax()]
+            # define the x-ranges where there should be ONLY noise and never a signal
+            in_noise_range = np.where(
+                ((rcp_x > -0.8 * sample_rate / 2) & (rcp_x < (freq_of_max - 1.2 * df_calc))) |
+                ((rcp_x < 0.8 * sample_rate / 2) & (rcp_x > (freq_of_max + 1.2 * df_calc))))
+            # how much the noise power oscillates above and below its mean value in dB
+            Pxx_noise_var_RCP = np.std(rcp_y[in_noise_range])
+            Pxx_noise_var_LCP = np.std(lcp_y[in_noise_range])
+            noise_var = Pxx_noise_var_RCP
+            # get outputs
+            max_signal_rcp = max_signal
+            max_signal_lcp = lcp_y[rcp_y.argmax()]
+        elif max_signal == np.max(lcp_y):
+            freq_of_max = lcp_x[lcp_y.argmax()]
+            # define the x-ranges where there should be ONLY noise and never a signal
+            in_noise_range = np.where(
+                ((lcp_x > -0.8 * sample_rate / 2) & (lcp_x < (freq_of_max - 1.2 * df_calc))) |
+                ((lcp_x < 0.8 * sample_rate / 2) & (lcp_x > (freq_of_max + 1.2 * df_calc))))
+            # how much the noise power oscillates above and below its mean value in dB
+            Pxx_noise_var_RCP = np.std(rcp_y[in_noise_range])
+            Pxx_noise_var_LCP = np.std(lcp_y[in_noise_range])
+            noise_var = Pxx_noise_var_LCP
+            # get outputs
+            max_signal_rcp = rcp_y[lcp_y.argmax()]
+            max_signal_lcp = max_signal
+        else:
+            print('ERROR FINDING DIRECT SIGNAL')
+
+        detectability_threshold = noise_var + 3.0
 
         # find minimum signal
         min_signal = np.min([np.min(rcp_y), np.min(lcp_y)])
@@ -203,25 +219,30 @@ def get_signal_overview(rcp_data, lcp_data, samples_for_welch, sample_rate, samp
             pxx_min = min_signal
 
         overview_seconds.append(start_i / sample_rate)
-        overview_pxx.append(max_signal)
+        overview_pxx_rcp.append(max_signal_rcp)
+        overview_pxx_lcp.append(max_signal_lcp)
         overview_freqs.append(freq_of_max)
+
+        # array of 1s and 0s saying when a signal is detectable or not
+        signal_detected.append(max_signal if (max_signal > detectability_threshold) else 0)
 
         start_i += samples_per_hop * rate
         stop_i += samples_per_hop * rate
 
     # store these in the program settings
-    return overview_pxx, overview_freqs, overview_seconds, pxx_min, np.max(overview_pxx)
+    return overview_pxx_rcp, overview_pxx_lcp, overview_freqs, overview_seconds, pxx_min, \
+           np.max(overview_pxx_rcp), signal_detected
 
 
-def get_freq_plot_center(overview_freqs, overview_pxx, mission):
+def get_freq_plot_center(overview_freqs, overview_pxx_rcp, mission):
     """ A function to find the frequency of the direct signal of the plot. """
 
     # TODO: Developer will need to choose a suitable automated peak detection algorithm.
     #  For now, just hardcode the values for each mission.
 
-    ind = np.argmax(overview_pxx)
+    ind = np.argmax(overview_pxx_rcp)
     freq_plot_center = overview_freqs[ind]
-    if overview_pxx[ind] < 25:
+    if overview_pxx_rcp[ind] < 25:
         if mission == 'Rosetta':
             freq_plot_center = -18.95
         if mission == 'Dawn':
@@ -553,12 +574,14 @@ def get_signal_processing_parameters(filenames=None,
         # get an overview of the direct signal over time, used for plotting
         overview = get_signal_overview(rcp_data, lcp_data, s.samples_for_welch,
                                        s.sample_rate, s.samples_per_raw_fft,
-                                       s.noverlap, s.samples_per_hop, s.mission)
-        s.overview_pxx = overview[0]
-        s.overview_freqs = overview[1]
-        s.overview_seconds = overview[2]
-        s.pxx_min = overview[3]
-        s.pxx_max = overview[4]
+                                       s.noverlap, s.samples_per_hop, s.df_calc)
+        s.overview_pxx_rcp = overview[0]
+        s.overview_pxx_lcp = overview[1]
+        s.overview_freqs = overview[2]
+        s.overview_seconds = overview[3]
+        s.pxx_min = overview[4]
+        s.pxx_max = overview[5]
+        s.signal_detected = overview[6]
     else:
         # window was already setup and user is just adjusting parameters, reuse same overview plot
         copy_overview_data(old_settings=old_settings, new_settings=s)
@@ -568,7 +591,7 @@ def get_signal_processing_parameters(filenames=None,
     ##############################
 
     # find the frequency of the direct signal
-    s.freq_plot_center = get_freq_plot_center(s.overview_freqs, s.overview_pxx, s.mission)
+    s.freq_plot_center = get_freq_plot_center(s.overview_freqs, s.overview_pxx_rcp, s.mission)
 
     # get default plot window settings
     default_window_settings = get_plot_window(s.freq_plot_center, s.df_calc, s.pxx_min, s.pxx_max)
@@ -585,7 +608,7 @@ def get_signal_processing_parameters(filenames=None,
 
 def copy_overview_data(old_settings=None, new_settings=None):
     """ A function to store pipeline components that were computationally intensive to produce. """
-    new_settings.overview_pxx = old_settings.overview_pxx
+    new_settings.overview_pxx_rcp = old_settings.overview_pxx_rcp
     new_settings.overview_freqs = old_settings.overview_freqs
     new_settings.overview_seconds = old_settings.overview_seconds
     new_settings.pxx_min = old_settings.pxx_min
