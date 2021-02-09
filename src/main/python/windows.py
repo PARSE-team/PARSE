@@ -30,7 +30,7 @@ from PyQt5.QtWidgets import QMainWindow, QAbstractItemView, QTableWidget, QTable
 from ui.ui_20210204.StartScreen_v32 import Ui_MainWindow as Start_Ui
 from ui.ui_20201106.FileSelection_v18_dawn import Ui_MainWindow as File_Ui_Standard
 from ui.ui_20200906.FileSelection_v13 import Ui_MainWindow as File_Ui_DetachedLabel
-from ui.ui_20210204.SignalAnalysis_v37 import Ui_MainWindow as Signal_Ui
+from ui.ui_20210204.SignalAnalysis_v38 import Ui_MainWindow as Signal_Ui
 # from ui.ui_20210131.ExportMenu_v1 import Ui_MainWindow as ExportMenu_Ui
 from ui.ui_20210129.glucokeep_about import Ui_MainWindow as About_Ui
 
