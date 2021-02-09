@@ -31,7 +31,7 @@ from ui.ui_20210204.StartScreen_v32 import Ui_MainWindow as Start_Ui
 from ui.ui_20201106.FileSelection_v18_dawn import Ui_MainWindow as File_Ui_Standard
 from ui.ui_20200906.FileSelection_v13 import Ui_MainWindow as File_Ui_DetachedLabel
 from ui.ui_20210204.SignalAnalysis_v38 import Ui_MainWindow as Signal_Ui
-# from ui.ui_20210131.ExportMenu_v1 import Ui_MainWindow as ExportMenu_Ui
+from ui.ui_20210204.ExportMenu_v2 import Ui_MainWindow as ExportMenu_Ui
 from ui.ui_20210129.glucokeep_about import Ui_MainWindow as About_Ui
 
 from read_data import find_polar_pair, file_to_numpy, get_iq_data, get_files, get_sample_rate, \
@@ -43,6 +43,7 @@ from spectral_analysis import get_spectral_analysis_results
 from astropy.time import Time, TimeDelta
 import numpy as np
 import time
+import os
 
 import matplotlib
 
@@ -705,10 +706,8 @@ class SignalWindow(QMainWindow, Signal_Ui):
         # format text labels in the interface
         self.format_text_in_gui()
 
-        # create toolbar, passing canvas as first parameter, then parent
-        toolbar = NavigationToolbar(self.animation_widget, self)
-        # toolbar.setStyleSheet("background-color:Gray;")
-        self.vlayout_right.insertWidget(2, toolbar)
+        # add a toolbar for Matplotlib
+        self.setup_plotting_toolbar()
 
         # create a WorkerDataIngestion object and a thread
         self.worker_dataingestion = WorkerDataIngestion()
@@ -1057,9 +1056,12 @@ class SignalWindow(QMainWindow, Signal_Ui):
         # only allow the user to analyze a plot if the animation is paused
         self.tab_widget.setTabEnabled(1, True)
 
-    def export_animation(self):
-        # print('export attempted')
-        pass
+    def export_plot(self):
+        rcp_x, rcp_y, lcp_x, lcp_y, files_label, time_label, current_index, \
+        current_second = self.animation_widget.plots[self.animation_widget.frame_index]
+        self.export_window = ExportWindow(self.ctx, rcp_x=rcp_x, rcp_y=rcp_y, lcp_x=lcp_x,
+                                          lcp_y=lcp_y, fig=self.animation_widget.fig)
+        self.export_window.show()
 
     def back_to_files(self):
         print('SignalWindow.back_to_files(self)')
@@ -1247,7 +1249,7 @@ class SignalWindow(QMainWindow, Signal_Ui):
         self.btn_prev_frame.clicked.connect(self.pause_animation)
         self.btn_next_frame.clicked.connect(self.animation_widget.show_next_frame)
         self.btn_next_frame.clicked.connect(self.pause_animation)
-        # todo: connect export button self.btn_export.clicked.connect(self.function)
+        self.btn_export.clicked.connect(self.export_plot)
 
     def prevent_accidental_scroll_adjustments(self):
         # set spin boxes to ignore scroll events, so user doesn't change them accidentally
@@ -1277,6 +1279,34 @@ class SignalWindow(QMainWindow, Signal_Ui):
         # ensure the title text on tab is visible, this fixes a bug where the text was white
         self.tab_widget.tabBar().setTabTextColor(0, QColor('black'))
         self.tab_widget.tabBar().setTabTextColor(1, QColor('black'))
+
+    def setup_plotting_toolbar(self):
+
+        # horizontal layout to add to main window
+        hlayout = QtWidgets.QHBoxLayout()
+        hlayout.setContentsMargins(0, 8, 0, 10)  # (left, top, right, bottom)
+
+        # spacer items
+        spacer1 = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding,
+                                        QtWidgets.QSizePolicy.Minimum)
+        spacer2 = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding,
+                                        QtWidgets.QSizePolicy.Minimum)
+
+        # create toolbar, passing canvas as first parameter, then parent
+        toolbar = NavigationToolbar(self.animation_widget, self)
+        toolbar.setMinimumSize(QtCore.QSize(600, 0))
+        self.vlayout_right.insertWidget(2, toolbar)
+
+        # add items in order
+        hlayout.addItem(spacer1)
+        hlayout.addWidget(toolbar)
+        hlayout.addItem(spacer2)
+
+        # add entire row to main window
+        self.vlayout_right.insertLayout(2, hlayout)
+
+        # adjust an adjacent widget to improve layout
+        self.horizontalLayout_4.setContentsMargins(-1, 9, -1, 8)  # (left, top, right, bottom)
 
     @QtCore.pyqtSlot(object)
     def receive_data_from_worker(self, data_tuple):
@@ -1381,7 +1411,68 @@ class IngestionProgress(QDialog):
 
     @QtCore.pyqtSlot(int)
     def receive_progress(self, count):
+        if count >= 70:
+            self.setWindowTitle('Processing Data')
         self.progress.setValue(count)
+
+
+class ExportWindow(QMainWindow, ExportMenu_Ui):
+    def __init__(self, ctx, rcp_x, rcp_y, lcp_x, lcp_y, fig, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.ctx = ctx
+        self.setupUi(self)
+
+        # set the title
+        self.setWindowTitle("Export Plot")
+
+        # set text to be selectable
+        set_text_selectable(self)
+
+        # attributes
+        self.rcp_x = rcp_x
+        self.rcp_y = rcp_y
+        self.lcp_x = lcp_x
+        self.lcp_y = lcp_y
+        self.fig = fig
+
+        # connect UI elements using slots and signals
+        self.btn_cancel.clicked.connect(self.cancel_export)
+        self.btn_ascii.clicked.connect(self.export_as_ascii)
+        self.btn_image.clicked.connect(self.export_as_image)
+
+        self.centralwidget.setContentsMargins(10, 10, 10, 10)  # (left, top, right, bottom)
+        self.verticalLayout_2.setSpacing(7)
+
+        self.btn_ascii.setText("Export Plot as ASCII\n( TXT )")
+        self.btn_image.setText("Export Plot as Image\n( PNG / PDF )")
+
+        # center the window
+        center_window(self)
+
+    def cancel_export(self):
+        self.close()
+
+    def export_as_ascii(self):
+        # export the current plot as a (.txt) file
+        did_set_title = False
+        rows = len(self.rcp_x)
+        path = QFileDialog.getSaveFileName(self, 'Save File', os.getenv('HOME'),
+                                           'Text files (*.txt)')
+        if path[0] != '':
+            with open(path[0], 'w') as file:
+                for i in range(rows):
+                    if not did_set_title:
+                        file.write("X(Hz) RCP_Y(dB) LCP_Y(dB)\n")
+                        did_set_title = True
+                    file.write("{} {} {}\n".format(self.rcp_x[i], self.rcp_y[i], self.lcp_y[i]))
+        self.close()
+
+    def export_as_image(self):
+        # export the current plot as an image file
+        path = QFileDialog.getSaveFileName(self, 'Save File', os.getenv('HOME'),
+                                           "Images (*.png *.pdf)")
+        self.fig.savefig(path[0], dpi=300)
+        self.close()
 
 
 def center_window(main_window):

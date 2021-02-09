@@ -66,6 +66,11 @@ class AppContext(ApplicationContext):
             font: "Arial";
             padding: 4px;
         }
+        /* ---------- SET MATPLOTLIB INTERACTIVE TOOLBAR STYLE---------- */
+        QToolBar { 
+            border: 1.5px solid black;
+            border-radius: 3px;
+        }
         /* ---------- SET "APPLY" and "REFRESH" BUTTONS ---------- */
         #btn_apply_changes {
             border: 1px solid darkblue;
