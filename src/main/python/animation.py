@@ -537,7 +537,7 @@ class BSRAnimation(FigureCanvas):
             mdates.AutoDateLocator(interval_multiples=True))  # auto-select convenient interval
 
         # x-axis tick parameters
-        self.overview_plot.tick_params(axis='x', which='minor', rotation=30)
+        self.overview_plot.tick_params(axis='x', which='minor', rotation=30, length=4)
         self.overview_plot.tick_params(axis='x', which='major', pad=35, length=7)
 
         # mark current frame's location in the time series
