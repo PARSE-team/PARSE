@@ -71,6 +71,10 @@ class AppContext(ApplicationContext):
             border: 1.5px solid black;
             border-radius: 3px;
         }
+        /* ---------- SET USER-DEFINED WINDOW STYLE---------- */
+        UserdefinedWindow {
+            background: lightgrey;
+        }  
         /* ---------- SET "APPLY" and "REFRESH" BUTTONS ---------- */
         #btn_apply_changes {
             border: 1px solid darkblue;
@@ -135,7 +139,7 @@ class AppContext(ApplicationContext):
             border-radius: 3px;
         }
         QScrollBar::add-line:vertical {
-            background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+            background: qlineargradient(x1:0, y1:0, x2:1, y2:0, 
             stop: 0 rgb(32, 47, 130), stop: 0.5 rgb(32, 47, 130),  stop:1 rgb(32, 47, 130));
             height: 0px;
             subcontrol-position: bottom;
@@ -196,7 +200,7 @@ class AppContext(ApplicationContext):
             subcontrol-position: top center;
             font-weight: bold;
         }
-        /* ---------- (LEVEL 1) STYLE SMALLER INPUT WIDGETS---------- */
+        /* ---------- (LEVEL 1) STYLE SMALLER INPUT WIDGETS ---------- */
         QLineEdit {
             background: white;
         }  
@@ -212,6 +216,16 @@ class AppContext(ApplicationContext):
         QTimeEdit {
             background: white;
         }       
+        /* ---------- SET MENU BUTTONS ---------- */
+        #btn_tutorial, #btn_documentation, #btn_sourcecode, #btn_about, #btn_contact {
+            border: 1px solid #8f8f91;
+            border-radius: 0px;
+            background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
+                                              stop: 0 #f6f7fa, stop: 1 #dadbde);
+            min-width: 110px;
+            min-height: 38px;
+        }
+        
         '''
         # set the stylesheet
         self.app.setStyleSheet(style)
