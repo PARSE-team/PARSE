@@ -375,6 +375,9 @@ def get_signal_processing_parameters(filenames=None,
         band_freq = x_band_freq
     elif band_name == 'S':
         band_freq = s_band_freq
+    elif band_name:
+        # for user-defined data files, the band_name is its frequency in MHz
+        band_freq = int(band_name.split()[0]) * mhz2hz
     else:
         band_freq = None
         print("Data from this antenna is not yet supported")
@@ -398,6 +401,18 @@ def get_signal_processing_parameters(filenames=None,
         s.v_sc_orbital = set_value(v_sc_orbital, default=200)  # meters/second
         s.altitude_sc = set_value(altitude_sc, default=200000)  # meters
         s.dt_occ = set_value(dt_occ, default=2000)  # seconds
+    elif mission == 'userfile':
+        print('\nusing user-defined auto parameters')
+        s.target = 'userfile'
+        s.mission = mission
+        theta_beamwidth = math.radians(1.6)  # radians
+        s.radius_target = radius_target  # meters
+
+        # todo: calc from other userdefined params
+        s.v_sc_orbital = set_value(v_sc_orbital, default=200)  # meters/second
+
+        s.altitude_sc = altitude_sc  # meters
+        s.dt_occ = dt_occ  # seconds
     else:
         print('mission error')
 
@@ -466,6 +481,9 @@ def get_signal_processing_parameters(filenames=None,
         s.seconds_per_hop = (s.percent_window_per_hop * percent2frac) * s.seconds_per_raw_fft
     elif mission == 'Dawn':
         s.seconds_per_hop = 1
+    elif mission == 'userfile':
+        s.seconds_per_hop = 1
+        pass
     else:
         print('mission error')
 
@@ -481,6 +499,8 @@ def get_signal_processing_parameters(filenames=None,
     if mission == 'Rosetta':
         s.raw_fft_per_average = set_value(raw_fft_per_average, default=2)
     elif mission == 'Dawn':
+        s.raw_fft_per_average = set_value(raw_fft_per_average, default=2)
+    elif mission == 'userfile':
         s.raw_fft_per_average = set_value(raw_fft_per_average, default=2)
     else:
         print('mission error')
@@ -609,7 +629,9 @@ def get_signal_processing_parameters(filenames=None,
 def copy_overview_data(old_settings=None, new_settings=None):
     """ A function to store pipeline components that were computationally intensive to produce. """
     new_settings.overview_pxx_rcp = old_settings.overview_pxx_rcp
+    new_settings.overview_pxx_lcp = old_settings.overview_pxx_lcp
     new_settings.overview_freqs = old_settings.overview_freqs
     new_settings.overview_seconds = old_settings.overview_seconds
     new_settings.pxx_min = old_settings.pxx_min
     new_settings.pxx_max = old_settings.pxx_max
+    new_settings.signal_detected = old_settings.signal_detected

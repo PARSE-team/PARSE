@@ -25,7 +25,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 from PyQt5.QtGui import QImage, QPixmap, QGuiApplication, QFont, QColor
 from PyQt5.QtCore import Qt, QTime, QDate, QDateTime
 from PyQt5.QtWidgets import QMainWindow, QAbstractItemView, QTableWidget, QTableWidgetItem, \
-    QDialog, QProgressBar, QFileDialog, QLabel, QGridLayout, QWidget, QDesktopWidget
+    QDialog, QProgressBar, QFileDialog, QLabel, QGridLayout, QWidget, QDesktopWidget, QLineEdit
 
 from ui.ui_20210204.StartScreen_v32 import Ui_MainWindow as Start_Ui
 from ui.ui_20201106.FileSelection_v18_dawn import Ui_MainWindow as File_Ui_Standard
@@ -33,6 +33,7 @@ from ui.ui_20200906.FileSelection_v13 import Ui_MainWindow as File_Ui_DetachedLa
 from ui.ui_20210204.SignalAnalysis_v38 import Ui_MainWindow as Signal_Ui
 from ui.ui_20210204.ExportMenu_v2 import Ui_MainWindow as ExportMenu_Ui
 from ui.ui_20210129.glucokeep_about import Ui_MainWindow as About_Ui
+from ui.ui_20210204.UserdefinedMenu_v2 import Ui_MainWindow as Userdefined_Ui
 
 from read_data import find_polar_pair, file_to_numpy, get_iq_data, get_files, get_sample_rate, \
     strftime_DOY, strftime_hhmmss, strftime_yyyyDOYhhmmss, strftime_yyyyDOYhhmmssff, \
@@ -91,6 +92,7 @@ class StartWindow(QMainWindow, Start_Ui):
             130, 130, Qt.KeepAspectRatio, Qt.SmoothTransformation)
         self.label_usclogo.setPixmap(pixmap_usc_logo)
         self.label_usclogo.setAlignment(Qt.AlignRight | Qt.AlignBottom)
+        self.label_usclogo.setContentsMargins(0, 0, 12, 8)  # (left, top, right, bottom)
 
         self.btn_documentation.setText("User's Guide")
 
@@ -116,29 +118,9 @@ class StartWindow(QMainWindow, Start_Ui):
         self.close()
 
     def choose_userfile(self):
-        # TODO: implement
-        """self.userfile = QFileDialog.getOpenFileNames()
-        print("chose file: " + str(self.userfile))
-        if self.userfile:
-            pass
-            userfile = DataLabel(file_name='user-defined',
-                                 label=None,
-                                 path_to_label=None,
-                                 path_to_data=self.userfile,
-                                 mission='user-defined',
-                                 band_name='user-defined',
-                                 polarization='user-defined',
-                                 start_time=None,
-                                 stop_time=None)
-
-            self.files_tuple = find_polar_pair(self.selected_file, self.data_labels)
-            self.signal_window = SignalWindow(self.ctx, self.source, self.files_tuple)
-            self.signal_window.show()
-            self.close()
-        else:
-            # TODO: implement error dialog
-            print("directory error")"""
-        pass
+        self.userdefined_window = UserdefinedWindow(self.ctx, source='userfile')
+        self.userdefined_window.show()
+        self.close()
 
     def show_tutorial(self):
         self.tutorial_window = TutorialWindow(self.ctx)
@@ -453,6 +435,160 @@ class ContactUsWindow(QMainWindow, About_Ui):
         self.close()
 
 
+class UserdefinedWindow(QMainWindow, Userdefined_Ui):
+    def __init__(self, ctx, source, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.ctx = ctx
+        self.setupUi(self)
+
+        # set the title
+        self.setWindowTitle("PARSE - User Dataset")
+
+        # set text to be selectable
+        set_text_selectable(self)
+
+        # set tooltip descriptions for user input parameters
+        self.set_tooltips()
+
+        # center window
+        center_window(self)
+
+        # set spin boxes to ignore scroll events, so user doesn't change them accidentally
+        prevent_accidental_scroll_adjustments(self)
+
+        # adjust layout
+        self.lbl_instructions.setAlignment(Qt.AlignHCenter)
+        self.label.setAlignment(Qt.AlignHCenter)
+
+        # save session variables
+        self.source = source
+
+        # information to request from user
+        self.rcp_path = None
+        self.lcp_path = None
+        self.dt_occ = None
+        self.radius_target = None
+        self.altitude_sc = None
+        self.band_name = None
+        # default value
+        self.spin_bandfreq.setValue(8400)
+        self.spin_occ_duration.setValue(10)
+
+        # custom QLineEdit widgets that open a file dialogue when clicked
+        self.custom_lineedit_rcp = ClickableLineEditWidget(' / User / directory / RCP_data. txt')
+        self.gridLayout.addWidget(self.custom_lineedit_rcp, 0, 1)
+        self.custom_lineedit_lcp = ClickableLineEditWidget(' / User / directory / LCP_data. txt')
+        self.gridLayout.addWidget(self.custom_lineedit_lcp, 1, 1)
+
+        # connect signals and slots
+        self.custom_lineedit_rcp.clicked.connect(self.get_rcp_path)
+        self.custom_lineedit_lcp.clicked.connect(self.get_lcp_path)
+        self.btn_back.clicked.connect(self.back_to_start)
+        self.btn_continue.clicked.connect(self.show_file_selection_window)
+
+    def get_rcp_path(self):
+        # todo: "try:"
+        self.rcp_path = QFileDialog.getOpenFileName()[0]
+        if self.rcp_path:
+            print("chose RCP file: " + str(self.rcp_path))
+            self.custom_lineedit_rcp.setText(self.rcp_path)
+        else:
+            print("directory error")
+
+    def get_lcp_path(self):
+        self.lcp_path = QFileDialog.getOpenFileName()[0]
+        if self.lcp_path:
+            print("chose LCP file: " + str(self.lcp_path))
+            self.custom_lineedit_lcp.setText(self.lcp_path)
+        else:
+            print("directory error")
+
+    def back_to_start(self):
+        self.start_window = StartWindow(self.ctx)
+        self.start_window.show()
+        self.close()
+
+    def show_file_selection_window(self):
+        print('\n\nrcp_path: ', self.rcp_path)
+        print('lcp_path: ', self.lcp_path)
+        print('band_name: ', self.band_name)
+        # read inputs to "Acquisition Geometry"
+        self.dt_occ = round(self.spin_occ_duration.value() * 60)
+        self.radius_target = int(self.spin_eq_radius.value() * 1000)
+        self.altitude_sc = int(self.spin_lowest_alt.value() * 1000)
+        self.band_name = int(self.spin_bandfreq.value())
+
+        self.file_window = FileWindowStandard(self.ctx, source=self.source,
+                                              path_rcp=self.rcp_path,
+                                              path_lcp=self.lcp_path,
+                                              dt_occ=self.dt_occ,
+                                              radius_target=self.radius_target,
+                                              altitude_sc=self.altitude_sc,
+                                              band_name=self.band_name)
+        self.file_window.show()
+        self.close()
+
+    def set_min_and_max_limits(self):
+        # todo: implement
+        """maximum_seconds = np.floor((self.rcp_file.stop_time
+                                    - self.rcp_file.start_time).to_value('sec')
+                                   - self.current_settings.seconds_for_welch)
+        maximum_seconds = TimeDelta(maximum_seconds, format='sec')
+        max_datetime = (self.rcp_file.start_time + maximum_seconds).strf('')"""
+        pass
+
+    def set_tooltips(self):
+
+        descriptions = {
+            'lbl_occ_duration': 'typically 1 min - 30 min or longer',
+            'lbl_sc_velocity': 'spacecraft orbital / flyby speed',
+            'lbl_lowest_alt': 'spacecraft distance above target surface'
+        }
+
+        self.add_info_icon(parent_container=self.horizontalLayout_6,
+                           parameter_description=descriptions['lbl_occ_duration'])
+        self.add_info_icon(parent_container=self.horizontalLayout_8,
+                           parameter_description=descriptions['lbl_sc_velocity'])
+        self.add_info_icon(parent_container=self.horizontalLayout_9,
+                           parameter_description=descriptions['lbl_lowest_alt'])
+
+    def add_info_icon(self, parent_container=None, parameter_description=None):
+        # retrieve the info icon image from resources and resize it
+        pixmap_icon = QPixmap(QImage(self.ctx.img_info_icon()))
+        pixmap_icon = pixmap_icon.scaled(
+            18, 18, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+
+        # make an empty label widget to use as a canvas
+        icon = QLabel()
+
+        # set the icon image
+        icon.setPixmap(pixmap_icon)
+        icon.setAlignment(Qt.AlignLeft)
+
+        # set the string description of the parameter
+        icon.setToolTip(parameter_description)
+
+        if parent_container is self.horizontalLayout_2:
+            icon.setAlignment(Qt.AlignLeft)
+            parent_container.insertWidget(3, icon)
+            parent_container.setSpacing(4)
+        else:
+            parent_container.insertWidget(1, icon)
+            parent_container.setSpacing(4)
+
+
+class ClickableLineEditWidget(QLineEdit):
+    """ A custom QWidget that emits a signal when clicked. """
+
+    clicked = QtCore.pyqtSignal()
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self.clicked.emit()
+        else:
+            super().mousePressEvent(event)
+
+
 class FileWindowDetachedLabel(QMainWindow, File_Ui_DetachedLabel):
     def __init__(self, ctx, source, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -561,7 +697,8 @@ class FileWindowDetachedLabel(QMainWindow, File_Ui_DetachedLabel):
 
 
 class FileWindowStandard(QMainWindow, File_Ui_Standard):
-    def __init__(self, ctx, source, *args, **kwargs):
+    def __init__(self, ctx, source, path_rcp=None, path_lcp=None, dt_occ=None, radius_target=None,
+                 altitude_sc=None, band_name=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.ctx = ctx
         self.setupUi(self)
@@ -582,9 +719,13 @@ class FileWindowStandard(QMainWindow, File_Ui_Standard):
 
         # save session variables
         self.source = source
+        self.dt_occ = dt_occ
+        self.radius_target = radius_target
+        self.altitude_sc = altitude_sc
 
         # read label files in directory, add to selection table
-        self.data_labels = get_files(source, self.ctx)
+        self.data_labels = get_files(source, self.ctx, path_rcp=path_rcp, path_lcp=path_lcp,
+                                     band_name=band_name)
         self.fill_table()
 
         # when a row is clicked, pass file info to next window
@@ -661,18 +802,27 @@ class FileWindowStandard(QMainWindow, File_Ui_Standard):
         self.close()
 
     def show_signal_window(self):
+        if self.dt_occ and self.radius_target and self.altitude_sc:
+            # the user defined own data, these are the parameters they entered
+            userdefined_params = (self.dt_occ, self.radius_target, self.altitude_sc)
+        else:
+            # the user has chosen a bundled dataset, use the default parameters
+            userdefined_params = None
+
+        # make a SignalWindow using the selected dataset and its polar pair
         self.files_tuple = find_polar_pair(self.selected_file, self.data_labels)
-        self.signal_window = SignalWindow(self.ctx, self.source, self.files_tuple)
+        self.signal_window = SignalWindow(self.ctx, self.source, self.files_tuple,
+                                          userdefined_params)
         self.signal_window.show()
         self.close()
 
 
 class SignalWindow(QMainWindow, Signal_Ui):
-    signal_to_run_worker = QtCore.pyqtSignal(object, object)
+    signal_to_run_worker = QtCore.pyqtSignal(object, object, object)
     signal_to_plot_analysis_results = QtCore.pyqtSignal(object)
     signal_to_hide_analysis_results = QtCore.pyqtSignal()
 
-    def __init__(self, ctx, source, files_tuple, *args, **kwargs):
+    def __init__(self, ctx, source, files_tuple, userdefined_params=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.ctx = ctx
         self.setupUi(self)
@@ -699,7 +849,7 @@ class SignalWindow(QMainWindow, Signal_Ui):
         # self.tab_widget.setTabEnabled(1, False)
 
         # set spin boxes to ignore scroll events, so user doesn't change them accidentally
-        self.prevent_accidental_scroll_adjustments()
+        prevent_accidental_scroll_adjustments(self)
 
         self.tab_widget.setMinimumWidth(523)
 
@@ -747,7 +897,7 @@ class SignalWindow(QMainWindow, Signal_Ui):
         self.msmt = None
 
         # worker thread processes and returns plotting/animation data
-        self.signal_to_run_worker.emit(self.rcp_file, self.lcp_file)
+        self.signal_to_run_worker.emit(self.rcp_file, self.lcp_file, userdefined_params)
 
     def show_parameters(self, s):
         """ A method to set the current value for input widgets on the Signal Processing tab. """
@@ -1108,6 +1258,7 @@ class SignalWindow(QMainWindow, Signal_Ui):
         return datetime_pyqt
 
     def set_min_and_max_limits(self):
+        # todo: implement
         """maximum_seconds = np.floor((self.rcp_file.stop_time
                                     - self.rcp_file.start_time).to_value('sec')
                                    - self.current_settings.seconds_for_welch)
@@ -1119,7 +1270,7 @@ class SignalWindow(QMainWindow, Signal_Ui):
 
         descriptions = {
             'lbl_occ_duration': 'typically 1 min - 30 min or longer',
-            'lbl_sc_velocity': 'spacecraft orbital/flyby speed',
+            'lbl_sc_velocity': 'spacecraft orbital / flyby speed',
             'lbl_lowest_alt': 'spacecraft distance above target surface',
             'lbl_freq_separation': 'computed frequency difference between direct and echo signals',
             'lbl_freq_res': 'frequency resolution of the output plots',
@@ -1251,22 +1402,6 @@ class SignalWindow(QMainWindow, Signal_Ui):
         self.btn_next_frame.clicked.connect(self.pause_animation)
         self.btn_export.clicked.connect(self.export_plot)
 
-    def prevent_accidental_scroll_adjustments(self):
-        # set spin boxes to ignore scroll events, so user doesn't change them accidentally
-        opts = QtCore.Qt.FindChildrenRecursively
-        spinboxes = self.findChildren(QtWidgets.QSpinBox, options=opts)
-        doublespinboxes = self.findChildren(QtWidgets.QDoubleSpinBox, options=opts)
-        datetimeedits = self.findChildren(QtWidgets.QDateTimeEdit, options=opts)
-        timeedits = self.findChildren(QtWidgets.QTimeEdit, options=opts)
-        for box in spinboxes:
-            box.wheelEvent = lambda *event: None
-        for box in doublespinboxes:
-            box.wheelEvent = lambda *event: None
-        for box in datetimeedits:
-            box.wheelEvent = lambda *event: None
-        for box in timeedits:
-            box.wheelEvent = lambda *event: None
-
     def format_text_in_gui(self):
         # some of the text labels in the frontend require rich text formatting
         self.lbl_freq_separation.setText("Calc. freq. separation (<i>δf</i> ) (Hz)")
@@ -1343,24 +1478,32 @@ class WorkerDataIngestion(QtCore.QObject):
         # QtCore.QObject.__init__(self, parent=parent)
         super().__init__(parent)
 
-    @QtCore.pyqtSlot(object, object)
-    def run(self, rcp_file, lcp_file):
+    @QtCore.pyqtSlot(object, object, object)
+    def run(self, rcp_file, lcp_file, userdefined_params):
+        # show thread is running
+        self.signal_progress.emit(10)
+
         # read data files into Numpy
         rcp_processed = file_to_numpy(rcp_file)
-        self.signal_progress.emit(10)
+        self.signal_progress.emit(25)
         lcp_processed = file_to_numpy(lcp_file)
-        self.signal_progress.emit(20)
+        self.signal_progress.emit(40)
 
         # isolate IQ data from processed file
         rcp_data = get_iq_data(rcp_processed, rcp_file.mission)
-        self.signal_progress.emit(40)
-
+        self.signal_progress.emit(45)
         lcp_data = get_iq_data(lcp_processed, lcp_file.mission)
-        self.signal_progress.emit(60)
+        self.signal_progress.emit(50)
 
         # get the sample rate of the data file
         sample_rate = get_sample_rate(rcp_processed, rcp_file.mission)
-        self.signal_progress.emit(70)
+        self.signal_progress.emit(60)
+
+        # if the user defend own acquisition geometry parameters for the dataset, use them
+        if userdefined_params:
+            dt_occ, radius_target, altitude_sc = userdefined_params
+        else:
+            dt_occ, radius_target, altitude_sc = None, None, None
 
         # get all parameters for radar analysis pipeline, using RCP file to set default values
         s = get_signal_processing_parameters(
@@ -1371,6 +1514,9 @@ class WorkerDataIngestion(QtCore.QObject):
             band_name=rcp_file.band_name,
             global_time=rcp_file.start_time,
             mission=rcp_file.mission,
+            dt_occ=dt_occ,
+            radius_target=radius_target,
+            altitude_sc=altitude_sc,
             file_start_time=rcp_file.start_time,
             file_end_time=rcp_file.stop_time,
             did_calculate_overview=False)
@@ -1398,7 +1544,7 @@ class IngestionProgress(QDialog):
         self.show()
 
     def initUI(self):
-        self.setWindowTitle('Loading Data Files')
+        self.setWindowTitle('Loading Data from Files...')
         self.progress = QProgressBar(self)
         self.progress.setGeometry(0, 0, 300, 25)
         self.progress.setMaximum(100)
@@ -1411,8 +1557,16 @@ class IngestionProgress(QDialog):
 
     @QtCore.pyqtSlot(int)
     def receive_progress(self, count):
-        if count >= 70:
-            self.setWindowTitle('Processing Data')
+        if count <= 10:
+            self.setWindowTitle('Loading Data from Files... (1/2)')
+        elif count <= 25:
+            self.setWindowTitle('Loading Data from Files... (2/2)')
+        elif count <= 40:
+            self.setWindowTitle('Cleaning Data... (1/2)')
+        elif count <= 45:
+            self.setWindowTitle('Cleaning Data... (2/2)')
+        elif count <= 50:
+            self.setWindowTitle('Processing Data...')
         self.progress.setValue(count)
 
 
@@ -1498,3 +1652,20 @@ def set_text_selectable(window):
     labels = window.findChildren(QtWidgets.QLabel, options=opts)
     for box in labels:
         box.setTextInteractionFlags(Qt.TextSelectableByMouse)
+
+
+def prevent_accidental_scroll_adjustments(window):
+    # set spin boxes to ignore scroll events, so user doesn't change them accidentally
+    opts = QtCore.Qt.FindChildrenRecursively
+    spinboxes = window.findChildren(QtWidgets.QSpinBox, options=opts)
+    doublespinboxes = window.findChildren(QtWidgets.QDoubleSpinBox, options=opts)
+    datetimeedits = window.findChildren(QtWidgets.QDateTimeEdit, options=opts)
+    timeedits = window.findChildren(QtWidgets.QTimeEdit, options=opts)
+    for box in spinboxes:
+        box.wheelEvent = lambda *event: None
+    for box in doublespinboxes:
+        box.wheelEvent = lambda *event: None
+    for box in datetimeedits:
+        box.wheelEvent = lambda *event: None
+    for box in timeedits:
+        box.wheelEvent = lambda *event: None

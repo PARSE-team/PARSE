@@ -27,7 +27,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
 import numpy as np
-from os import scandir
+import os
+import copy
 from pds3_mkelley.pds3.core import read_label
 from astropy.time import Time
 from datetime import datetime, timedelta
@@ -59,7 +60,7 @@ class DataLabel:
         self.stop_time = Time(self.label['STOP_TIME'], format='iso')
 
 
-def get_files(source, ctx):
+def get_files(source, ctx, path_rcp=None, path_lcp=None, band_name=None):
     # list of available files, stored as DataLabel objects
     datalabels = []
 
@@ -70,7 +71,7 @@ def get_files(source, ctx):
         directory = ctx.get_resource('data/rosetta/')
         return get_files_rosetta(directory)
     if source == 'userfile':
-        pass
+        return get_files_user(path_rcp, path_lcp, band_name)
 
     return datalabels
 
@@ -86,7 +87,7 @@ def get_files_rosetta(directory):
     pair_pending = []
 
     # scan the given directory, pairing data files to label files
-    for file in scandir(directory):
+    for file in os.scandir(directory):
         # scan for data or label files, ignore  sub-directories, roots, etc
         if file.is_file and (file.name.endswith('.lbl') or file.name.endswith('.dat')):
             # ignore the file extensions for pairing data and label files
@@ -134,7 +135,7 @@ def get_files_dawn(directory):
     dawn_files = []
 
     # scan the given directory, pairing data files to label files
-    for file in scandir(directory):
+    for file in os.scandir(directory):
 
         if file.is_file and file.name.endswith('.npy'):
 
@@ -164,7 +165,7 @@ def get_files_dawn(directory):
                 polarization = 'LEFT CIRCULAR'
 
             # get lines from original ASCII file (only binary version kept in project repository)
-            # first_line, last_line = read_dawn_ascii(path_to_data)
+            # first_line, last_line = get_first_and_last_lines_of_ascii(path_to_data)
 
             first_line = '2011 358 12601.00003'
             last_line = '2011 358 19260.99997'
@@ -188,18 +189,80 @@ def get_files_dawn(directory):
     return dawn_files
 
 
-def read_dawn_ascii(path_to_data):
-    # get lines from the original Dawn ASCII file (only binary version kept in project repository)
-    # start and stop times for this data series
-    """with open(path_to_data, 'r') as f:
+def get_files_user(path_rcp, path_lcp, band_name):
+    user_files = []
+
+    # if file.is_file and file.name.endswith('.npy'):
+    for filepath in [path_rcp, path_lcp]:
+
+        file_name = filepath.split('/')[-1]
+
+        label = None
+
+        path_to_label = None
+
+        path_to_data = filepath
+
+        mission = 'userfile'
+
+        # type of antenna that was used to record data
+        band_name_freq = str(copy.deepcopy(band_name)) + ' MHz'
+
+        # polarization
+        polarization = None
+        if filepath is path_rcp:
+            polarization = 'RIGHT CIRCULAR'
+        elif filepath is path_lcp:
+            polarization = 'LEFT CIRCULAR'
+
+        # get lines from original ASCII file (only binary version kept in project repository)
+        first_line, last_line = get_first_and_last_lines_of_ascii(path_to_data)
+        start_time = yds_to_ymdhms(first_line)
+        stop_time = yds_to_ymdhms(last_line)
+
+        print()
+        print('----- FILE INFO -----')
+        print('file_name: ', file_name)
+        print('path_to_data: ', path_to_data)
+        print('mission: ', mission)
+        print('band_name_freq: ', band_name_freq)
+        print('polarization: ', polarization)
+        print('start_time: ', start_time)
+        print('stop_time: ', stop_time)
+
+        # create a new DataLabel object
+        user_files.append(DataLabel(file_name=file_name,
+                                    label=None,
+                                    path_to_label=None,
+                                    path_to_data=path_to_data,
+                                    mission=mission,
+                                    band_name=band_name_freq,
+                                    polarization=polarization,
+                                    start_time=start_time,
+                                    stop_time=stop_time))
+    # sort the list by order of file start time, then order of file end time
+    user_files = sorted(user_files, key=time_order)
+
+    return user_files
+
+
+def get_first_and_last_lines_of_ascii(path_to_data):
+    """
+    with open(path_to_data) as f:
+        content = f.readlines()
+    # you may also want to remove whitespace characters like `\n` at the end of each line
+    content = [x.strip() for x in content]
+    """
+
+    # get start and stop times for this ASCII file
+    with open(path_to_data, 'r') as f:
         first_line = f.readline().strip()
     with open(path_to_data, 'rb') as f:
         f.seek(-2, os.SEEK_END)
         while f.read(1) != b'\n':
             f.seek(-2, os.SEEK_CUR)
         last_line = f.readline().decode()
-    return first_line, last_line"""
-    pass
+    return first_line, last_line
 
 
 def yds_to_ymdhms(year_day_second):
@@ -233,6 +296,8 @@ def find_polar_pair(chosen_file, dl_list):
     if chosen_file.mission == 'Rosetta':
         return find_polar_pair_rosetta(chosen_file, dl_list)
     elif chosen_file.mission == 'Dawn':
+        return find_polar_pair_dawn(chosen_file, dl_list)
+    elif chosen_file.mission == 'userfile':
         return find_polar_pair_dawn(chosen_file, dl_list)
     else:
         print('error')
@@ -305,7 +370,9 @@ def get_dtypes(data_label):
     if data_label.mission == 'Rosetta':
         return get_dtypes_rosetta(data_label)
     elif data_label.mission == 'Dawn':
-        return get_dtypes_dawn()
+        return get_dtypes_ascii()
+    elif data_label.mission == "userfile":
+        return get_dtypes_ascii()
     else:
         print('error')
 
@@ -374,7 +441,7 @@ def get_dtypes_rosetta(data_label):
     return np.dtype(dtype_raw)
 
 
-def get_dtypes_dawn():
+def get_dtypes_ascii():
     dt = np.dtype([('Year', np.int32), ('Day of Year', np.int32), ('Second in Day', np.float64),
                    ('I', np.int32), ('Q', np.int32)])
     return dt
@@ -387,6 +454,8 @@ def file_to_numpy(data_label):
         return file_to_numpy_rosetta(data_label)
     elif data_label.mission == 'Dawn':
         return file_to_numpy_dawn(data_label)
+    elif data_label.mission == 'userfile':
+        return file_to_numpy_userfile(data_label)
     else:
         print('error')
 
@@ -422,6 +491,19 @@ def file_to_numpy_dawn(data_label, use_binary_version=True):
         return table
 
 
+def file_to_numpy_userfile(data_label):
+    # set the Numpy dtype for all columns
+    dt = np.dtype(get_dtypes(data_label))
+
+    # read from ASCII file
+    table = np.loadtxt(data_label.path_to_data, dtype=dt)
+
+    # offer to save
+    # np.save(data_label.file_name + '.npy', table)
+
+    return table
+
+
 def get_iq_data(table, mission):
     """ A function that isolates the IQ data from the processed file,
     combining the imaginary and real parts into a memory efficient complex number. """
@@ -429,6 +511,8 @@ def get_iq_data(table, mission):
     if mission == 'Rosetta':
         return get_iq_data_rosetta(table)
     elif mission == 'Dawn':
+        return get_iq_data_dawn(table)
+    elif mission == 'userfile':
         return get_iq_data_dawn(table)
     else:
         print('error')
@@ -450,6 +534,8 @@ def get_sample_rate(table, mission):
     if mission == 'Rosetta':
         return get_sample_rate_rosetta(table)
     elif mission == 'Dawn':
+        return get_sample_rate_dawn(table)
+    elif mission == 'userfile':
         return get_sample_rate_dawn(table)
     else:
         print('error')
