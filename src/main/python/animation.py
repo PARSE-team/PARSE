@@ -579,8 +579,12 @@ class BSRAnimation(FigureCanvas):
             self.signal_plot.text(
                 x=(((self.msmt.freq_local_max - self.msmt.freq_local_min) / 3)
                    + self.msmt.freq_local_min),
-                y=self.msmt.Pxx_max_RCP * 1.3, s='Selected Range', **font_arial, fontsize=10,
-                horizontalalignment='center', verticalalignment='top', color='blue')
+                y=self.msmt.Pxx_max_RCP * 1.1, s='Selected Range', **font_arial, fontsize=10,
+                horizontalalignment='center',
+                verticalalignment='bottom',
+                color='blue')
+
+            print('\n\nself.msmt.Pxx_max_RCP: ', self.msmt.Pxx_max_RCP)
 
             # mark and label both peaks
             self.signal_plot.plot(

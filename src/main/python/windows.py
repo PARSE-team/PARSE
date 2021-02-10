@@ -1138,19 +1138,21 @@ class SignalWindow(QMainWindow, Signal_Ui):
         self.show_parameters_plot_analysis(msmt)
 
         is_calculated = True
+        self.signal_to_plot_analysis_results.emit(msmt)
         if msmt.error_NdB_below:
-            is_calculated = False
+            # is_calculated = False
             self.show_error_message('Error: Bandwidth cannot be measured this far below peak.')
         if msmt.error_direct_signal:
-            is_calculated = False
+            # is_calculated = False
             self.show_error_message(
                 'Warning: local max may not be a signal; '
                 'detectability limit is >= 3 dB above the noise.')
         if msmt.error_finding_bandwidth:
-            is_calculated = False
+            # is_calculated = False
             self.show_error_message('Error: Unable to detect the bandwidth of the specified peak.')
         if is_calculated:
-            self.signal_to_plot_analysis_results.emit(msmt)
+            # self.signal_to_plot_analysis_results.emit(msmt)
+            pass
 
     def toggle_results(self):
         print("\nSignalWindow.toggle_results()\n")
@@ -1168,20 +1170,22 @@ class SignalWindow(QMainWindow, Signal_Ui):
 
             # provide error messages to help user diagnose issues
             is_calculated = True
+            self.signal_to_plot_analysis_results.emit(self.msmt)
             if self.msmt.error_NdB_below:
-                is_calculated = False
+                # is_calculated = False
                 self.show_error_message('Error: Bandwidth cannot be measured this far below peak.')
             if self.msmt.error_direct_signal:
-                is_calculated = False
+                # is_calculated = False
                 self.show_error_message(
                     'Warning: local max may not be a signal; '
                     'detectability limit is >= 3 dB above the noise.')
             if self.msmt.error_finding_bandwidth:
-                is_calculated = False
+                # is_calculated = False
                 self.show_error_message(
                     'Error: Unable to detect the bandwidth of the specified peak.')
             if is_calculated:
-                self.signal_to_plot_analysis_results.emit(self.msmt)
+                # self.signal_to_plot_analysis_results.emit(self.msmt)
+                pass
         elif self.tab_widget.currentIndex() == 0:
             # hide results
             print("hide results")
@@ -1378,6 +1382,9 @@ class SignalWindow(QMainWindow, Signal_Ui):
             parent_container.insertWidget(1, icon)
             parent_container.setSpacing(4)
 
+    def show_processing_tab(self):
+        self.tab_widget.setCurrentIndex(0)
+
     def connect_signals_to_slots(self):
         """ A method to setup all PyQt5 signals/slot connections for this window during init. """
 
@@ -1396,10 +1403,12 @@ class SignalWindow(QMainWindow, Signal_Ui):
         # connect buttons that control animation playback
         self.btn_play.clicked.connect(self.play_animation)
         self.btn_pause.clicked.connect(self.pause_animation)
-        self.btn_prev_frame.clicked.connect(self.animation_widget.show_previous_frame)
         self.btn_prev_frame.clicked.connect(self.pause_animation)
-        self.btn_next_frame.clicked.connect(self.animation_widget.show_next_frame)
+        self.btn_prev_frame.clicked.connect(self.show_processing_tab)
+        self.btn_prev_frame.clicked.connect(self.animation_widget.show_previous_frame)
         self.btn_next_frame.clicked.connect(self.pause_animation)
+        self.btn_next_frame.clicked.connect(self.show_processing_tab)
+        self.btn_next_frame.clicked.connect(self.animation_widget.show_next_frame)
         self.btn_export.clicked.connect(self.export_plot)
 
     def format_text_in_gui(self):

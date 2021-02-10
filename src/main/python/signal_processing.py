@@ -284,7 +284,7 @@ def get_plot_window(freq_plot_center, df_calc, pxx_min, pxx_max):
     ylim_min = -10  # FIXME: return to original value
     # Display Name in GUI: “Y-Axis max (dB)”  # TODO: adjustable
     ylim_max = round_to_nearest_n(ylim_min + 1.2 * (pxx_max - pxx_min), n=5)
-    ylim_max = 70  # FIXME: return to original value
+    ylim_max = 75  # FIXME: return to original value
 
     return xlim_min, xlim_max, ylim_min, ylim_max
 
