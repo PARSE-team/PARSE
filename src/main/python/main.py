@@ -63,15 +63,15 @@ class AppContext(ApplicationContext):
         /* ---------- SET TABLE WIDGET FONT ---------- */
         QTableWidget {
             font-size: 13px;
-            font-family: "Courier";
+            font-family: "TypeWriter";
         }
         QTableWidget::item {
             font-size: 13px;
-            font-family: "Courier";
+            font-family: "TypeWriter";
         }
         #lbl_quickview {
             font-size: 13px;
-            font-family: "Courier";
+            font-family: "TypeWriter";
         }
         /* ---------- SET TOOLTIP FONT ---------- */
         QToolTip { 
