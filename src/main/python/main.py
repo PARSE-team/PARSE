@@ -60,6 +60,14 @@ class AppContext(ApplicationContext):
             background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
                                               stop: 0 #dadbde, stop: 1 #f6f7fa);
         }
+        /* ---------- SET TABLE WIDGET FONT ---------- */
+        QTableWidgetItem {
+            font-size: 13px;
+            font: "Arial";
+        }
+        
+        
+        
         /* ---------- SET TOOLTIP FONT ---------- */
         QToolTip { 
             font-size: 13px;
