@@ -630,8 +630,8 @@ class FileWindowDetachedLabel(QMainWindow, File_Ui_DetachedLabel):
 
     def fill_table(self):
         # format table
-        self.table_files.setFont(QFont("Monospace", 13))
-        self.lbl_quickview.setFont(QFont("Monospace", 12))
+        # self.table_files.setFont(QFont("Courier", 13))
+        # self.lbl_quickview.setFont(QFont("Courier", 13))
         column_names = ['File Name', 'Start Time', 'Stop Time', 'Band', 'Polarization']
         self.table_files.setColumnCount(5)
         # add one row for every LCP/RCP file pair
@@ -742,7 +742,7 @@ class FileWindowStandard(QMainWindow, File_Ui_Standard):
 
     def fill_table(self):
         # format table
-        self.table_files.setFont(QFont("Monospace", 13))
+        # self.table_files.setFont(QFont("Monospace", 13))
         # self.lbl_quickview.setFont(QFont("Monospace", 12))
         column_names = ['File Name', 'Start Time', 'Stop Time', 'Band', 'Polarization']
         self.table_files.setColumnCount(5)
