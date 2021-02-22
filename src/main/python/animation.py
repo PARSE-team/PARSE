@@ -587,7 +587,7 @@ class BSRAnimation(FigureCanvas):
 
             # mark and label both peaks
             self.signal_plot.plot(
-                [self.msmt.freq_at_max, self.msmt.freq_at_max], [-150, self.msmt.Pxx_max_RCP],
+                [self.msmt.freq_at_max, self.msmt.freq_at_max], [-5, self.msmt.Pxx_max_RCP],
                 lw=1.4, color='black', linestyle='-', marker="D", markersize=3)
             # self.signal_plot.text(
             #     x=self.msmt.freq_at_max, y=self.msmt.Pxx_max_RCP * 1.15, s='global max',
@@ -595,7 +595,7 @@ class BSRAnimation(FigureCanvas):
             #     verticalalignment='top', color='black')
             self.signal_plot.plot(
                 [self.msmt.freq_at_local_max, self.msmt.freq_at_local_max],
-                [-150, self.msmt.Pxx_local_max_RCP], lw=1.4, color='black',
+                [-5, self.msmt.Pxx_local_max_RCP], lw=1.4, color='black',
                 linestyle='-', marker="D", markersize=3)
             # self.signal_plot.text(
             #     x=self.msmt.freq_at_local_max, y=self.msmt.Pxx_local_max_RCP * 1.1,
