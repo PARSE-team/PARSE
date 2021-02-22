@@ -571,11 +571,10 @@ class BSRAnimation(FigureCanvas):
 
         if results:
             # mark and label the selected range
-            range_pad = round((self.msmt.freq_local_max - self.msmt.freq_local_min) * 0.15)
             self.signal_plot.axvline(
-                x=self.msmt.freq_local_min + range_pad, lw=0.7, color='blue', linestyle='--')
+                x=self.msmt.freq_local_min, lw=0.7, color='blue', linestyle='--')
             self.signal_plot.axvline(
-                x=self.msmt.freq_local_max - range_pad, lw=0.7, color='blue', linestyle='--')
+                x=self.msmt.freq_local_max, lw=0.7, color='blue', linestyle='--')
             self.signal_plot.text(
                 x=(((self.msmt.freq_local_max - self.msmt.freq_local_min) / 3)
                    + self.msmt.freq_local_min),
@@ -645,8 +644,7 @@ class BSRAnimation(FigureCanvas):
             #     verticalalignment='center', color='black')
 
             # this is what the resampled signal looks like
-            # self.signal_plot.plot(self.msmt.resamp_freq, self.msmt.resamp_pxx, lw=0.2,
-            # color='green')
+            self.signal_plot.plot(self.msmt.resamp_freq, self.msmt.resamp_pxx, lw=0.2, color='green')
 
         # draw canvas each frame
         self.draw()
