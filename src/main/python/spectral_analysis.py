@@ -123,6 +123,45 @@ def confirm_ndb_acceptable(y, noise_var):
         return error_NdB_below
 
 
+def find_direct_signal_frequency(rcp_x, rcp_y, lcp_x, lcp_y, sample_rate, df_calc):
+    # TODO: check if scipy.signal.find_peaks() can be applied instead of manually...
+
+    noise_variability = calculate_noise_variability(rcp_x, rcp_y, lcp_y, sample_rate, df_calc)
+    detectability_threshold = noise_variability + 3.0
+
+    rcp_argmax = np.argmax(rcp_y)
+    lcp_argmax = np.argmax(lcp_y)
+
+    global_max = np.max([rcp_y[rcp_argmax], lcp_y[lcp_argmax]])
+
+    if global_max <= detectability_threshold:
+        return None
+    else:
+        if global_max == rcp_y[rcp_argmax]:
+            return rcp_x[rcp_argmax]
+        elif global_max == lcp_y[lcp_argmax]:
+            return lcp_x[lcp_argmax]
+
+
+def calculate_noise_variability(freqs, Pxx, Pxx_LCP, sample_rate, df_calc):
+    # Analyze signal noise characteristics
+    # First define the x-ranges where there should be ONLY noise and never a signal
+    freq_at_max = freqs[Pxx.argmax()]
+    in_noise_range = np.where(
+        ((freqs > -0.8 * sample_rate / 2) & (freqs < (freq_at_max - 1.2 * df_calc))) |
+        ((freqs < 0.8 * sample_rate / 2) & (freqs > (freq_at_max + 1.2 * df_calc))))
+
+    # This next variable will tell us how much the noise power oscillates above and
+    # below its mean value in dB. You can only safely distinguish a signal from the
+    # noise if that signal is at least 3dB higher than the noise’s standard deviation.
+    # Display Name in GUI: "Noise Variation"
+    Pxx_noise_var_RCP = np.std(Pxx[in_noise_range])
+    Pxx_noise_var_LCP = np.std(Pxx_LCP[in_noise_range])
+    Pxx_noise_var = np.mean([Pxx_noise_var_LCP, Pxx_noise_var_RCP])
+
+    return Pxx_noise_var
+
+
 def set_value(value, default):
     if value:
         return value
@@ -291,13 +330,17 @@ def get_spectral_analysis_results(s, freqs, Pxx, freqs_LCP, Pxx_LCP, NdB_below=N
 
     # confirm the user/default parameter for NdB Below will work for all data subsets
     if not msmt.error_NdB_below:
-        msmt.error_NdB_below = confirm_ndb_acceptable(Pxx, msmt.Pxx_noise_var_RCP)
+        msmt.error_NdB_below = confirm_ndb_acceptable(
+            Pxx, msmt.Pxx_noise_var_RCP)
     if not msmt.error_NdB_below:
-        msmt.error_NdB_below = confirm_ndb_acceptable(Pxx_LCP, msmt.Pxx_noise_var_LCP)
+        msmt.error_NdB_below = confirm_ndb_acceptable(
+            Pxx_LCP, msmt.Pxx_noise_var_LCP)
     if not msmt.error_NdB_below:
-        msmt.error_NdB_below = confirm_ndb_acceptable(Pxx[in_selected_range], msmt.Pxx_noise_var_RCP)
+        msmt.error_NdB_below = confirm_ndb_acceptable(
+            Pxx[in_selected_range], msmt.Pxx_noise_var_RCP)
     if not msmt.error_NdB_below:
-        msmt.error_NdB_below = confirm_ndb_acceptable(Pxx_LCP[in_selected_range], msmt.Pxx_noise_var_LCP)
+        msmt.error_NdB_below = confirm_ndb_acceptable(
+            Pxx_LCP[in_selected_range], msmt.Pxx_noise_var_LCP)
 
     # Get the width of the peak we just found (aka frequency spread) measured at the
     # height that is set by “NdB_below”
@@ -348,7 +391,8 @@ def get_spectral_analysis_results(s, freqs, Pxx, freqs_LCP, Pxx_LCP, NdB_below=N
     # Display Name in GUI: “Bandwidth”
     if msmt.Pxx_local_max_RCP > (msmt.Pxx_noise_var_RCP + 3.0):
         # if the peak is detectable above the noise level, retrieve bandwidth
-        bw_RCP_local_max = get_bandwidth(msmt, freqs[in_selected_range], Pxx[in_selected_range], msmt.NdB_below)
+        bw_RCP_local_max = get_bandwidth(
+            msmt, freqs[in_selected_range], Pxx[in_selected_range], msmt.NdB_below)
     else:
         msmt.error_local_RCP = True
         bw_RCP_local_max = [0, 0, 0]
@@ -359,7 +403,8 @@ def get_spectral_analysis_results(s, freqs, Pxx, freqs_LCP, Pxx_LCP, NdB_below=N
     # repeat bandwidth calculation for LCP signal
     if msmt.Pxx_LCP_at_local_max > (msmt.Pxx_noise_var_LCP + 3.0):
         # if the peak is detectable above the noise level, retrieve bandwidth
-        bw_LCP_local_max = get_bandwidth(msmt, freqs[in_selected_range], Pxx_LCP[in_selected_range], msmt.NdB_below)
+        bw_LCP_local_max = get_bandwidth(
+            msmt, freqs[in_selected_range], Pxx_LCP[in_selected_range], msmt.NdB_below)
     else:
         msmt.error_local_LCP = True
         bw_LCP_local_max = [0, 0, 0]
