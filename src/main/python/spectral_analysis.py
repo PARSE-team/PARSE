@@ -32,43 +32,58 @@ class SpectralAnalysis:
         self.NdB_below = None
         self.freq_local_min = None
         self.freq_local_max = None
-
-        # Analysis Results
-        self.Pxx_max_RCP = None
-        self.freq_at_max = None
-
-        self.bandwidth_RCP_at_max = None
-        self.bandwidth_RCP_at_max_start = None
-        self.bandwidth_RCP_at_max_stop = None
-        self.Pxx_noise_var_RCP = None
         self.df_calc = None
 
-        # Selected Range
+        # Noise Variability Calculations
+        self.Pxx_noise_var_RCP = None
+        self.Pxx_noise_var_LCP = None
+
+        # Global Calculations
+        self.Pxx_max_RCP = None
+        self.Pxx_LCP_at_max = None
+        self.freq_at_max = None
+        # Global Bandwidth RCP
+        self.bandwidth_RCP_at_max = None
+        self.bandwidth_start_RCP_at_max = None
+        self.bandwidth_stop_RCP_at_max = None
+        # Global Bandwidth LCP
+        self.bandwidth_LCP_at_max = None
+        self.bandwidth_start_LCP_at_max = None
+        self.bandwidth_stop_LCP_at_max = None
+
+        # Selected Range Calculations
         self.Pxx_local_max_RCP = None
+        self.Pxx_LCP_at_local_max = None
         self.freq_at_local_max = None
+        # Selected Range Bandwidth RCP
         self.bandwidth_RCP_local_max = None
-        self.bandwidth_RCP_local_max_start = None
-        self.bandwidth_RCP_local_max_stop = None
+        self.bandwidth_start_RCP_local_max = None
+        self.bandwidth_stop_RCP_local_max = None
+        # Selected Range Bandwidth LCP
+        self.bandwidth_LCP_local_max = None
+        self.bandwidth_start_LCP_local_max = None
+        self.bandwidth_stop_LCP_local_max = None
+
+        # Other
         self.Pxx_local_var = None
         self.delta_Pxx_max_RCP = None
+        self.delta_Pxx_LCP = None
         self.df_obsv = None
 
-        # LCP copies
-        self.Pxx_LCP_at_max = None
-        self.bandwidth_LCP_at_max = None
-        self.Pxx_noise_var_LCP = None
-        self.Pxx_LCP_at_local_max = None
-        self.bandwidth_LCP_at_local_max = None
-        self.delta_Pxx_LCP = None
-
-        # user errors
+        # User Errors
         self.error_NdB_below = False
-        self.error_direct_signal = False
+        self.error_global_RCP = False
+        self.error_global_LCP = False
+        self.error_local_RCP = False
+        self.error_local_LCP = False
         self.error_finding_bandwidth = False
 
-        # testing
+        # testing effects of resampling the pxx
         self.resamp_freq = None
         self.resamp_pxx = None
+        # other testing
+        self.x = None
+        self.y = None
 
     def pprint(self):
         print('\nPlot Analysis: ')
@@ -89,6 +104,25 @@ class SpectralAnalysis:
         print()
 
 
+def find_nearest(array, value):
+    array = np.asarray(array)
+    idx = (np.abs(array - value)).argmin()
+    return array[idx]
+
+
+def confirm_ndb_acceptable(y, noise_var):
+    # height at which to measure bandwidth (aka bw)
+    bw_height = max(y) - noise_var
+    if (bw_height <= 0) or (bw_height <= noise_var):
+        """print('Error: Cannot measure bandwidth at or below noise levels. '
+              'Too far below peak. Setting default to 2 dB below peak.')"""
+        error_NdB_below = True
+        return error_NdB_below
+    else:
+        error_NdB_below = False
+        return error_NdB_below
+
+
 def set_value(value, default):
     if value:
         return value
@@ -96,11 +130,71 @@ def set_value(value, default):
         return default
 
 
-# screen4results_v1.py
+def get_bandwidth(msmt, x, y, n_dB):
+    # ensure np.ndarray shape=(n,)
+    x = np.squeeze(x)
+    y = np.squeeze(y)
+
+    # height at which to measure bandwidth (aka bw)
+    bw_height = max(y) - n_dB
+
+    # find any x values where y = bw_height
+    bw_start = None
+    bw_stop = None
+
+    msmt.x = []
+    msmt.y = []
+
+    # find left side of bandwidth (iterate right to left)
+    for ind in range(y.argmax(), 0, -1):
+        if y[ind] < bw_height:
+            # iterate until finding a value below the bandwidth height
+            i1 = ind + 1
+            x1 = x[i1]
+            y1 = y[i1]
+            i2 = ind
+            x2 = x[i2]
+            y2 = y[i2]
+
+            # interpolate data to find accurate measurement for bandwidth
+            x_interp = np.interp(bw_height, [y2, y1], [x2, x1])
+            bw_start = x_interp
+
+        if bw_start:
+            break
+    # find right side of bandwidth (iterate left to right)
+    for ind in range(y.argmax(), y.size):
+        if y[ind] < bw_height:
+            # iterate until finding a value below the bandwidth height
+            i1 = ind - 1
+            x1 = x[i1]
+            y1 = y[i1]
+            i2 = ind
+            x2 = x[i2]
+            y2 = y[i2]
+
+            # interpolate data to find accurate measurement for bandwidth
+            x_interp = np.interp(bw_height, [y2, y1], [x2, x1])
+            bw_stop = x_interp
+
+        if bw_stop:
+            break
+
+    if bw_start and bw_stop:
+        print('\nFOUND BANDWIDTH\n')
+    else:
+        print('\nDID NOT FIND BANDWIDTH\n')
+        msmt.error_finding_bandwidth = True
+
+    bw = np.abs(bw_stop - bw_start)
+
+    return bw, bw_start, bw_stop
+
+
 def get_spectral_analysis_results(s, freqs, Pxx, freqs_LCP, Pxx_LCP, NdB_below=None,
                                   freq_local_min=None, freq_local_max=None):
     """
-    A function that generates all results for the Signal Analysis pipeline.
+    A function that generates all results for the Spectral Analysis pipeline.
 
     NOTATION:
     dB          decibels; herein defined as 10*log10(power/average_noise_power)
@@ -113,33 +207,43 @@ def get_spectral_analysis_results(s, freqs, Pxx, freqs_LCP, Pxx_LCP, NdB_below=N
                 height on said peak
     """
 
-    # ----------------------- SIGNAL ANALYSIS RESULTS -----------------------
-
     # save signal analysis results to object, which is passed between functions
     # “msmt” is shorthand for “measurement” of the signal characteristics:
     msmt = SpectralAnalysis()
 
-    # ----- Analysis Settings -----
+    # ----------------------- ANALYSIS PARAMETERS -----------------------
 
     # This parameter tells the program what “height” along the peak to measure its
     # width. In this example, we are telling the program to measure bandwidths at a
     # height of 10 dB below the top of the peak.
     # Display Name in GUI: “Measure bandwidths at <___> (dB) below peaks”
-    msmt.NdB_below = set_value(NdB_below, default=10)  # default	# TODO: ADJUSTABLE
+    msmt.NdB_below = set_value(NdB_below, default=2)  # default	# TODO: ADJUSTABLE
 
     # Find local maximum between these next two variables
     # Display Name in GUI: “X-Axis min (Hz)”
     msmt.freq_local_min = set_value(freq_local_min, default=s.xlim_min)  # TODO: ADJUSTABLE
     # Display Name in GUI: “X-Axis max (Hz)”
     msmt.freq_local_max = set_value(freq_local_max, default=s.xlim_max)  # TODO: ADJUSTABLE
+
+    # signal considered "buried in the noise" unless it is more than 3 dB above the noise level
+    # detectability_threshold = 3.0
+
+    # if the user has default x-range set, be sure that default appears on initial plot window
+    if not freq_local_min and not freq_local_max:
+        # ensure the selected range can fit within default plot window by adding a fixed-length pad
+        range_pad = round((s.xlim_max - s.xlim_min) * 0.15)
+        msmt.freq_local_min = copy.deepcopy(s.xlim_min) + range_pad
+        msmt.freq_local_max = copy.deepcopy(s.xlim_max) - range_pad
+
     in_selected_range = np.argwhere((freqs > msmt.freq_local_min) & (freqs < msmt.freq_local_max))
 
-    freqs_in_range = freqs[in_selected_range]
-    Pxx_in_range = Pxx[in_selected_range]
+    # This is the predicted/calculated frequency separation between the direct
+    # signal and the echo signal and has already been calculated in the Processing
+    # Settings object (Screen 3) as s.df_calc:
+    # Display Name in GUI: "delta_X Predicted (𝛿f)"
+    msmt.df_calc = s.df_calc
 
-    # FIXME: could be error above!
-
-    # ----- Analysis Results -----
+    # ----------------------- ANALYSIS RESULTS: GLOBAL -----------------------
 
     # simply the maximum y value over the full x-range of frequencies
     # Display Name in GUI: “Y-Max (global)”
@@ -148,8 +252,9 @@ def get_spectral_analysis_results(s, freqs, Pxx, freqs_LCP, Pxx_LCP, NdB_below=N
 
     # simply the x-value (frequency) of the max(y) we just found
     # Display Name in GUI: “X at Y-Max”
-    msmt.freq_at_max = freqs[Pxx.argmax()]
+    msmt.freq_at_max = freqs[np.argmax(Pxx)]
 
+    # todo: remove?
     if s.mission == 'Rosetta':
         # FIXME: multiple points?
         # FIXME: remove the false peak at 0
@@ -171,92 +276,6 @@ def get_spectral_analysis_results(s, freqs, Pxx, freqs_LCP, Pxx_LCP, NdB_below=N
 
         msmt.freq_at_max = freqs[Pxx_copy.argmax()]
 
-    # Get the width of the peak we just found (aka frequency spread) measured at the
-    # height that is set by “NdB_below”:
-    def get_bandwidth(x, y, n_dB, exclude_zero=False):
-        # x = np.array(x)
-        # y = np.array(y)
-
-        if exclude_zero:
-            # FIXME: remove the false peak at 0
-            where_to_look1, where_to_look2 = 0, 0
-            if np.any(x < -0.5):
-                where_to_look1 = np.max(np.argwhere(x < -0.5))
-            else:
-                print('error1')
-
-            if np.any(x > 0.5):
-                where_to_look2 = np.min(np.argwhere(x > 0.5))
-            else:
-                print('error2')
-            # where_to_look = np.max(y[where_to_look1:where_to_look2])
-
-            for i in range(where_to_look1, where_to_look2):
-                y[i] = 0
-
-        # height at which to measure bandwidth (aka bw)
-        bw_height = max(y) - n_dB
-        if bw_height < 0:
-            print('Error: Bandwidth cannot be measured this far below peak. 1')
-            # TODO: display errors to user
-            msmt.error_NdB_below = True
-            # and make the user try a new msmt.NdB_below value
-            # PAUL WRITE THIS CODE ABOVE, I DON’T KNOW HOW XD
-
-        # add 10x more intermediate points in our plot for higher resolution
-        resamp_resolution = 100
-        n_resamp_pts = len(x) * resamp_resolution
-        y_resamp = signal.resample(y, num=n_resamp_pts)  # , domain='freq')
-        x_resamp = np.linspace(min(x), max(x), n_resamp_pts)
-
-        # testing
-        msmt.resamp_freq = x_resamp
-        msmt.resamp_pxx = y_resamp
-
-        # print(np.where((y_resamp >= (bw_height - 1)) & (y_resamp <= (bw_height + 1))))
-
-        # find any x values where y = bw_height
-        indexes = []
-
-        # find index of peaks in resampled array, iterate L/R to find first instances of n_dB
-        # then max-min to find bandwidth
-        index_of_resamp_peak = y.argmax() * resamp_resolution
-
-        for i in range(index_of_resamp_peak, len(y_resamp)):
-            if (y_resamp[i] >= (bw_height - 0.5)) and (y_resamp[i] <= (bw_height + 0.5)):
-                indexes.append(i)
-                print('\n\nFOUND1\n\n')
-                break
-
-        for i in range(index_of_resamp_peak, 1, -1):
-            if (y_resamp[i] >= (bw_height - 0.5)) and (y_resamp[i] <= (bw_height + 0.5)):
-                indexes.append(i)
-                print('\n\nFOUND2\n\n')
-                break
-
-        if len(indexes) == 2:
-            print('\nFOUND BANDWIDTH\n')
-        else:
-            print('\nDID NOT FIND BANDWIDTH\n')
-            msmt.error_finding_bandwidth = True
-
-        x_at_bw_height = x_resamp[indexes]
-
-        bw_start = min(x_at_bw_height)
-        bw_stop = max(x_at_bw_height)
-
-        bw = bw_stop - bw_start
-
-        return bw, bw_start, bw_stop
-
-    # Display Name in GUI: “Bandwidth”
-    bw_of_max = get_bandwidth(freqs, Pxx, msmt.NdB_below)  # , exclude_zero=True)
-    msmt.bandwidth_RCP_at_max = bw_of_max[0]
-    msmt.bandwidth_RCP_at_max_start = bw_of_max[1]
-    msmt.bandwidth_RCP_at_max_stop = bw_of_max[2]
-    # TODO: implement
-    msmt.bandwidth_LCP_at_max = 0
-
     # Analyze signal noise characteristics
     # First define the x-ranges where there should be ONLY noise and never a signal
     in_noise_range = np.where(
@@ -270,48 +289,83 @@ def get_spectral_analysis_results(s, freqs, Pxx, freqs_LCP, Pxx_LCP, NdB_below=N
     msmt.Pxx_noise_var_RCP = np.std(Pxx[in_noise_range])
     msmt.Pxx_noise_var_LCP = np.std(Pxx_LCP[in_noise_range])
 
-    # This is the predicted/calculated frequency separation between the direct
-    # signal and the echo signal and has already been calculated in the Processing
-    # Settings object (Screen 3) as s.df_calc:
-    # Display Name in GUI: "delta_X Predicted (𝛿f)"
-    msmt.df_calc = s.df_calc
+    # confirm the user/default parameter for NdB Below will work for all data subsets
+    if not msmt.error_NdB_below:
+        msmt.error_NdB_below = confirm_ndb_acceptable(Pxx, msmt.Pxx_noise_var_RCP)
+    if not msmt.error_NdB_below:
+        msmt.error_NdB_below = confirm_ndb_acceptable(Pxx_LCP, msmt.Pxx_noise_var_LCP)
+    if not msmt.error_NdB_below:
+        msmt.error_NdB_below = confirm_ndb_acceptable(Pxx[in_selected_range], msmt.Pxx_noise_var_RCP)
+    if not msmt.error_NdB_below:
+        msmt.error_NdB_below = confirm_ndb_acceptable(Pxx_LCP[in_selected_range], msmt.Pxx_noise_var_LCP)
 
-    # ----- Selected Range -----
+    # Get the width of the peak we just found (aka frequency spread) measured at the
+    # height that is set by “NdB_below”
+    # Display Name in GUI: “Bandwidth”
+    if msmt.Pxx_max_RCP > (msmt.Pxx_noise_var_RCP + 3.0):
+        # if the peak is detectable above the noise level, retrieve bandwidth
+        bw_RCP_at_max = get_bandwidth(msmt, freqs, Pxx, msmt.NdB_below)
+    else:
+        msmt.error_global_RCP = True
+        bw_RCP_at_max = (0, 0, 0)
+    msmt.bandwidth_RCP_at_max = bw_RCP_at_max[0]
+    msmt.bandwidth_start_RCP_at_max = bw_RCP_at_max[1]
+    msmt.bandwidth_stop_RCP_at_max = bw_RCP_at_max[2]
+
+    # repeat bandwidth calculation for LCP signal
+    if msmt.Pxx_LCP_at_max > (msmt.Pxx_noise_var_LCP + 3.0):
+        # if the peak is detectable above the noise level, retrieve bandwidth
+        bw_LCP_at_max = get_bandwidth(msmt, freqs, Pxx_LCP, msmt.NdB_below)
+    else:
+        msmt.error_global_LCP = True
+        bw_LCP_at_max = (0, 0, 0)
+    msmt.bandwidth_LCP_at_max = bw_LCP_at_max[0]
+    msmt.bandwidth_start_LCP_at_max = bw_LCP_at_max[1]
+    msmt.bandwidth_stop_LCP_at_max = bw_LCP_at_max[2]
+
+    # ----------------------- ANALYSIS RESULTS: SELECTED RANGE (LOCAL) -----------------------
 
     # After the user selects an x-range in the Settings panel, this output parameter
     # will be the maximum y value in between those bounds.
     # Display Name in GUI: "Y-Max (local)"
-    msmt.Pxx_local_max_RCP = Pxx[np.argmax(Pxx[in_selected_range])]
-    msmt.Pxx_LCP_at_local_max = Pxx_LCP[np.argmax(Pxx[in_selected_range])]
+    msmt.Pxx_local_max_RCP = Pxx[in_selected_range][np.argmax(Pxx[in_selected_range])]
+    msmt.Pxx_LCP_at_local_max = Pxx_LCP[in_selected_range][np.argmax(Pxx[in_selected_range])]
 
     # A signal is considered to be "buried in the noise" unless it is more than 3 dB
     # above the noise level.
     detectability_threshold = msmt.Pxx_noise_var_RCP + 3.0
     if msmt.Pxx_local_max_RCP <= detectability_threshold:
-        print("Warning: local max may not be a signal; "
-              "detectability limit is >= 3 dB above the noise.")
-        # TODO: display errors to user
-        msmt.error_direct_signal = True
+        msmt.error_local_RCP = True
 
     # x-value of the max(y_local) we just found.
     # Display Name in GUI: “X at Y-Max”
-    msmt.freq_at_local_max = freqs_in_range[Pxx[in_selected_range].argmax()]
+    msmt.freq_at_local_max = freqs[in_selected_range][np.argmax(Pxx[in_selected_range])]
 
     # Same as the bandwidth formula above, but confined within the selected x-range.
     if msmt.Pxx_local_max_RCP <= msmt.NdB_below:
-        print("Error: Bandwidth cannot be measured this far below peak. 2")
-        # TODO: display errors to user
         msmt.error_NdB_below = True
-        # and make the user try a new msmt.NdB_below value
-        # PAUL WRITE THIS CODE ABOVE, I DON’T KNOW HOW
 
     # Display Name in GUI: “Bandwidth”
-    bw_of_local = get_bandwidth(freqs[in_selected_range], Pxx[in_selected_range], msmt.NdB_below)
-    msmt.bandwidth_RCP_local_max = bw_of_local[0]
-    msmt.bandwidth_RCP_local_max_start = bw_of_local[1]
-    msmt.bandwidth_RCP_local_max_stop = bw_of_local[2]
-    # TODO: implement
-    msmt.bandwidth_LCP_at_local_max = 0
+    if msmt.Pxx_local_max_RCP > (msmt.Pxx_noise_var_RCP + 3.0):
+        # if the peak is detectable above the noise level, retrieve bandwidth
+        bw_RCP_local_max = get_bandwidth(msmt, freqs[in_selected_range], Pxx[in_selected_range], msmt.NdB_below)
+    else:
+        msmt.error_local_RCP = True
+        bw_RCP_local_max = [0, 0, 0]
+    msmt.bandwidth_RCP_local_max = bw_RCP_local_max[0]
+    msmt.bandwidth_start_RCP_local_max = bw_RCP_local_max[1]
+    msmt.bandwidth_stop_RCP_local_max = bw_RCP_local_max[2]
+
+    # repeat bandwidth calculation for LCP signal
+    if msmt.Pxx_LCP_at_local_max > (msmt.Pxx_noise_var_LCP + 3.0):
+        # if the peak is detectable above the noise level, retrieve bandwidth
+        bw_LCP_local_max = get_bandwidth(msmt, freqs[in_selected_range], Pxx_LCP[in_selected_range], msmt.NdB_below)
+    else:
+        msmt.error_local_LCP = True
+        bw_LCP_local_max = [0, 0, 0]
+    msmt.bandwidth_LCP_local_max = bw_LCP_local_max[0]
+    msmt.bandwidth_start_LCP_local_max = bw_LCP_local_max[1]
+    msmt.bandwidth_stop_LCP_local_max = bw_LCP_local_max[2]
 
     # This will tell us how much the power oscillates from its mean value within the
     # selected x-range. The higher the variance, the harder it is to accurately
