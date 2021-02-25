@@ -354,7 +354,7 @@ class BSRAnimation(FigureCanvas):
         print('frame index: ', self.frame_index)
 
         # choose what to draw on the FigureCanvas
-        if (self.s.stop_index_count < self.rcp_data.size) and (self.plots or not self.was_setup):
+        if (self.s.stop_index_count < (self.rcp_data.size - self.s.samples_per_hop)) and (self.plots or not self.was_setup):
 
             ####################################
             # Get Data for Plotting this Frame
@@ -395,6 +395,9 @@ class BSRAnimation(FigureCanvas):
                 # save recent plots so the user can rewind if needed
 
                 self.frame_index += 1
+
+                print('self.s.stop_index_count: ', self.s.stop_index_count)
+                print('self.rcp_data.size:      ', self.rcp_data.size)
 
                 # worker_datagen thread has queued a plot, unpack result
                 rcp_x, rcp_y, lcp_x, lcp_y, files_label, time_label, current_index, \
@@ -447,12 +450,12 @@ class BSRAnimation(FigureCanvas):
                             current_index=current_index, current_second=current_second,
                             results=results)
 
-        elif self.s.stop_index_count < self.rcp_data.size:
+        elif self.s.stop_index_count < (self.rcp_data.size - self.s.samples_per_hop):
             # the animation is waiting for the worker_datagen thread to queue another plot
             print('...waiting for worker_datagen thread...')
             pass
 
-        else:
+        elif self.s.stop_index_count >= (self.rcp_data.size - self.s.samples_per_hop):
             print("\n\n------------------\n  ANIMATION COMPLETED\n------------------ ")
             # animation completed, no frames remaining
             self.timer.stop()
@@ -477,7 +480,7 @@ class BSRAnimation(FigureCanvas):
         self.signal_plot.legend(loc=2, fontsize=14, prop={"family": "Arial"})
 
         # mark the estimated direct signal
-        # todo peak detection per frame
+        # TODO: peak detection per frame
         # self.signal_plot.axvline(x=self.s.freq_plot_center, lw=0.1, color='blue')
         if self.frame_index != 0:
             direct_signal = rcp_x[np.argmax(rcp_y)]
@@ -575,32 +578,48 @@ class BSRAnimation(FigureCanvas):
                 x=self.msmt.freq_local_min, lw=0.7, color='blue', linestyle='--')
             self.signal_plot.axvline(
                 x=self.msmt.freq_local_max, lw=0.7, color='blue', linestyle='--')
-            self.signal_plot.text(
-                x=(((self.msmt.freq_local_max - self.msmt.freq_local_min) / 3)
-                   + self.msmt.freq_local_min),
-                y=self.msmt.Pxx_max_RCP * 1.1, s='Selected Range', **font_arial, fontsize=10,
+            midpoint = self.msmt.freq_local_min + ((self.msmt.freq_local_max - self.msmt.freq_local_min) / 2)
+            an1 = self.signal_plot.annotate(
+                'Selected Range',
+                xy=(midpoint, self.msmt.Pxx_max_RCP * 1.1),
+                xycoords='data',
+                xytext=(-20, 0),
+                textcoords='offset points',
+                **font_arial,
+                fontsize=10,
                 horizontalalignment='center',
-                verticalalignment='bottom',
                 color='blue')
-
-            print('\n\nself.msmt.Pxx_max_RCP: ', self.msmt.Pxx_max_RCP)
 
             # mark and label both peaks
             self.signal_plot.plot(
-                [self.msmt.freq_at_max, self.msmt.freq_at_max], [-5, self.msmt.Pxx_max_RCP],
+                [self.msmt.freq_at_max, self.msmt.freq_at_max], [-20, self.msmt.Pxx_max_RCP],
                 lw=1.4, color='black', linestyle='-', marker="D", markersize=3)
-            # self.signal_plot.text(
-            #     x=self.msmt.freq_at_max, y=self.msmt.Pxx_max_RCP * 1.15, s='global max',
-            #     fontsize=10, **font_arial, horizontalalignment='center',
-            #     verticalalignment='top', color='black')
+            an2 = self.signal_plot.annotate(
+                'global max',
+                xy=(self.msmt.freq_at_max, self.msmt.Pxx_max_RCP),
+                xycoords='data',
+                xytext=(0, 40),
+                textcoords='offset points',
+                **font_arial,
+                fontsize=10,
+                horizontalalignment='center',
+                color='black',
+                arrowprops=dict(width=2, facecolor='black', shrink=0.1, headwidth=8, frac=0.2))
             self.signal_plot.plot(
                 [self.msmt.freq_at_local_max, self.msmt.freq_at_local_max],
-                [-5, self.msmt.Pxx_local_max_RCP], lw=1.4, color='black',
+                [-20, self.msmt.Pxx_local_max_RCP], lw=1.4, color='black',
                 linestyle='-', marker="D", markersize=3)
-            # self.signal_plot.text(
-            #     x=self.msmt.freq_at_local_max, y=self.msmt.Pxx_local_max_RCP * 1.1,
-            #     s='local max', **font_arial, fontsize=10, horizontalalignment='center',
-            #     verticalalignment='top', color='black')
+            an3 = self.signal_plot.annotate(
+                'local max',
+                xy=(self.msmt.freq_at_local_max, self.msmt.Pxx_local_max_RCP),
+                xycoords='data',
+                xytext=(0, 50),
+                textcoords='offset points',
+                **font_arial,
+                fontsize=10,
+                horizontalalignment='center',
+                color='black',
+                arrowprops=dict(width=2, facecolor='black', shrink=0.1, headwidth=8, frac=0.2))
 
             # mark and label delta-f
             self.signal_plot.plot(
@@ -608,43 +627,62 @@ class BSRAnimation(FigureCanvas):
                 [(self.s.ylim_min + (self.s.ylim_max - self.s.ylim_min) * 0.1),
                  (self.s.ylim_min + (self.s.ylim_max - self.s.ylim_min) * 0.1)],
                 lw=1.4, color='black', linestyle='-', marker="D", markersize=4)
-            # self.signal_plot.text(
-            #     x=(np.max([self.msmt.freq_at_max, self.msmt.freq_at_local_max]) + 1),
-            #     y=(self.s.ylim_min + (self.s.ylim_max - self.s.ylim_min) * 0.1),
-            #     s='df', **font_arial, fontsize=11, horizontalalignment='right',
-            #     verticalalignment='center', color='black')
+            midpoint = min([self.msmt.freq_at_max, self.msmt.freq_at_local_max]) + (np.abs(self.msmt.freq_at_max - self.msmt.freq_at_local_max) / 2)
+            an4 = self.signal_plot.annotate(
+                'df',
+                xy=(midpoint, (self.s.ylim_min + (self.s.ylim_max - self.s.ylim_min) * 0.1)),
+                xycoords='data',
+                xytext=(0, 80),
+                textcoords='offset points',
+                **font_arial,
+                fontsize=10,
+                horizontalalignment='center',
+                color='black',
+                arrowprops=dict(width=2, facecolor='black', shrink=0.1, headwidth=8, frac=0.2))
 
             # mark and label the bandwidth of both peaks
             self.signal_plot.plot(
-                [self.msmt.bandwidth_RCP_at_max_start, self.msmt.bandwidth_RCP_at_max_stop],
+                [self.msmt.bandwidth_start_RCP_at_max, self.msmt.bandwidth_stop_RCP_at_max],
                 [(self.msmt.Pxx_max_RCP - self.msmt.NdB_below),
                  (self.msmt.Pxx_max_RCP - self.msmt.NdB_below)],
                 lw=1.3, color='black', linestyle='-', marker="D", markersize=3)
-            # self.signal_plot.text(
-            #     x=(self.msmt.bandwidth_RCP_at_max_start
-            #        + (self.msmt.bandwidth_RCP_at_max_stop
-            #           - self.msmt.bandwidth_RCP_at_max_start) / 2),
-            #     y=(self.msmt.Pxx_max_RCP - self.msmt.NdB_below),
-            #     s='bandwidth\nat -' + str(self.msmt.NdB_below) + ' dB', **font_arial,
-            #     fontsize=10, horizontalalignment='center',
-            #     verticalalignment='center', color='black')
+            an5 = self.signal_plot.annotate(
+                'bandwidth\nat -' + str(self.msmt.NdB_below) + ' dB',
+                xy=(self.msmt.bandwidth_start_RCP_at_max, (self.msmt.Pxx_max_RCP - self.msmt.NdB_below)),
+                xycoords='data',
+                xytext=(-70, 30),
+                textcoords='offset points',
+                **font_arial,
+                fontsize=10,
+                horizontalalignment='center',
+                color='black',
+                arrowprops=dict(width=2, facecolor='black', shrink=0.08, headwidth=8, frac=0.2))
             self.signal_plot.plot(
-                [self.msmt.bandwidth_RCP_local_max_start,
-                 self.msmt.bandwidth_RCP_local_max_stop],
+                [self.msmt.bandwidth_start_RCP_local_max,
+                 self.msmt.bandwidth_stop_RCP_local_max],
                 [(self.msmt.Pxx_local_max_RCP - self.msmt.NdB_below),
                  (self.msmt.Pxx_local_max_RCP - self.msmt.NdB_below)],
                 lw=1.3, color='black', linestyle='-', marker="D", markersize=3)
-            # self.signal_plot.text(
-            #     x=(self.msmt.bandwidth_RCP_local_max_start
-            #        + (self.msmt.bandwidth_RCP_local_max_stop
-            #           - self.msmt.bandwidth_RCP_local_max_start) / 2),
-            #     y=(self.msmt.Pxx_local_max_RCP - self.msmt.NdB_below),
-            #     s='bandwidth\nat -' + str(self.msmt.NdB_below) + ' dB', **font_arial,
-            #     fontsize=10, horizontalalignment='center',
-            #     verticalalignment='center', color='black')
+            an6 = self.signal_plot.annotate(
+                'bandwidth\nat -' + str(self.msmt.NdB_below) + ' dB',
+                xy=(self.msmt.bandwidth_start_RCP_local_max,
+                    (self.msmt.Pxx_local_max_RCP - self.msmt.NdB_below)),
+                xycoords='data',
+                xytext=(-70, 30),
+                textcoords='offset points',
+                **font_arial,
+                fontsize=10,
+                horizontalalignment='center',
+                color='black',
+                arrowprops=dict(width=2, facecolor='black', shrink=0.08, headwidth=8, frac=0.2))
 
-            # this is what the resampled signal looks like
-            self.signal_plot.plot(self.msmt.resamp_freq, self.msmt.resamp_pxx, lw=0.2, color='green')
+            # set annotations to be draggable
+            an1.draggable()
+            an2.draggable()
+            an3.draggable()
+            an4.draggable()
+            an5.draggable()
+            an6.draggable()
 
         # draw canvas each frame
         self.draw()
