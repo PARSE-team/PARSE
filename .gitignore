@@ -3,7 +3,7 @@
 
 # PARSE
 target/
-doc/todo
+notes/
 # src/main/resources/base/data/
 
 ### macOS ###
