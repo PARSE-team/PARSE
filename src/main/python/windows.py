@@ -206,7 +206,8 @@ class ManualWindow(QMainWindow, About_Ui):
         # provide link to email
         self.label_2.setOpenExternalLinks(True)
         self.label_2.setText(
-            "<a href=https://github.com/PARSE-team/PARSE/blob/main/Manual.pdf>https://github.com/PARSE-team/PARSE/blob/main/Manual.pdf</a>")
+            "<a href=https://github.com/PARSE-team/PARSE/blob/main/Manual.pdf>"
+            "https://github.com/PARSE-team/PARSE/blob/main/Manual.pdf</a>")
         self.label_2.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.LinksAccessibleByMouse)
 
         self.label_3.setText("")
@@ -875,7 +876,7 @@ class SignalWindow(QMainWindow, Signal_Ui):
         self.worker_dataingestion_thread.start()
 
         # dialog box to show worker progress
-        self.progress_window = IngestionProgress(parent=self)
+        self.progress_window = IngestionProgress(self.ctx, parent=self)
         # self.progress_window.setFocus(True)
         # self.progress_window.raise_()
         # self.progress_window.activateWindow()
@@ -1574,18 +1575,38 @@ class WorkerDataIngestion(QtCore.QObject):
 
 
 class IngestionProgress(QDialog):
-    def __init__(self, parent=None):
+    def __init__(self, ctx, parent=None):
         super().__init__(parent)
+        self.ctx = ctx
         self.initUI()
         self.show()
 
     def initUI(self):
-        self.setWindowTitle('Loading Data from Files...')
-        self.progress = QProgressBar(self)
-        self.progress.setGeometry(0, 0, 500, 25)
-        self.progress.setMaximum(100)
-        self.setModal(True)
 
+        self.setMinimumWidth(450)
+        # horizontal layout to add to main window
+        vlayout = QtWidgets.QVBoxLayout()
+        self.setLayout(vlayout)
+        vlayout.setContentsMargins(5, 5, 5, 5)  # (left, top, right, bottom)
+
+        # add the large PARSE graphic to be shown on the start window
+        pixmap_parse_icon = QPixmap(QImage(self.ctx.img_custom_logo()))
+        pixmap_parse_icon = pixmap_parse_icon.scaled(
+            180, 180, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        self.label_parse_icon = QLabel()
+        self.label_parse_icon.setPixmap(pixmap_parse_icon)
+        self.label_parse_icon.setAlignment(Qt.AlignCenter)
+        vlayout.addWidget(self.label_parse_icon)
+
+        self.progress = QProgressBar(self)
+        self.progress.setGeometry(0, 0, 300, 25)
+        self.progress.setMaximum(100)
+        self.progress.setTextVisible(False)
+        vlayout.addWidget(self.progress)
+
+        # set window properties
+        self.setWindowTitle('Loading Data from Files...')
+        self.setModal(True)
         screen_geometry = QGuiApplication.screens()[0].geometry()
         x = (screen_geometry.width() - self.width()) / 2
         y = ((screen_geometry.height() - self.height()) / 2) - (screen_geometry.height() * 0.05)
