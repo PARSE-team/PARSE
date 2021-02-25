@@ -3,6 +3,7 @@
 
 # PARSE
 target/
+doc/todo.txt
 # src/main/resources/base/data/
 
 ### macOS ###
