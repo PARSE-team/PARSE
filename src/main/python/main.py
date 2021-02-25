@@ -238,6 +238,20 @@ class AppContext(ApplicationContext):
             min-width: 110px;
             min-height: 38px;
         }
+        /* ---------- STYLE QDialog ---------- */
+        QDialog {
+            background: white;
+        }       
+        /* ---------- STYLE QProgressBar ---------- */
+        QProgressBar {
+            border: 2px solid grey;
+            border-radius: 5px;
+        }
+        QProgressBar::chunk {
+            background-color: #990000;
+            width: 10px;
+            margin: 0.5px;
+        }
         
         '''
         # set the stylesheet
@@ -260,10 +274,9 @@ class AppContext(ApplicationContext):
         return QImage(self.get_resource('usc_logo_2.png'))
 
     def img_custom_logo(self):
-        # load the custom PARSE icon graphic, unused at present (02.2021)
-        return QImage(self.get_resource('custom_logo_256.png'))
+        # load the custom PARSE icon graphic, for data ingestion progress window
+        return QImage(self.get_resource('custom_logo_512.png'))
 
-    # todo: cached?
     def img_info_icon(self):
         # load the info icon graphic, used for tooltips
         return QImage(self.get_resource('info_icon.png'))
