@@ -36,7 +36,8 @@ import numpy as np
 import time
 import copy
 from astropy.time import Time, TimeDelta
-from signal_processing import get_psd
+from signal_processing import get_psd, get_plot_window
+from spectral_analysis import find_direct_signal_frequency
 from read_data import strftime_yyyyDOYhhmmssff, astropy_to_python, \
     strftime_DOY, strftime_hhmmss, strftime_yyyyDOYhhmmss, strftime_yyyyDOY
 
@@ -61,6 +62,7 @@ class WorkerDataGenerator(QtCore.QObject):
         self.filenames = None
 
         # user input parameters
+        self.df_calc = None
         self.sample_rate = None
         self.samples_per_raw_fft = None
         self.noverlap = None
@@ -93,6 +95,10 @@ class WorkerDataGenerator(QtCore.QObject):
                 self.global_time + TimeDelta(self.seconds_for_welch, format='sec'))
             files_label = 'RCP file: ' + self.filenames[0] + '\nLCP file: ' + self.filenames[1]
 
+            # find the frequency of the direct signal, if it is present in this frame
+            direct_signal_freq = find_direct_signal_frequency(rcp_x, rcp_y, lcp_x, lcp_y,
+                                                              self.sample_rate, self.df_calc)
+
             # store copy of counters, then update them
             current_second = self.stop_sec_count
             current_index = self.stop_index_count
@@ -101,7 +107,7 @@ class WorkerDataGenerator(QtCore.QObject):
             self.update_counters()
 
             return rcp_x, rcp_y, lcp_x, lcp_y, files_label, time_label, current_index, \
-                   current_second
+                   current_second, direct_signal_freq
 
     def update_counters(self):
         """ A method that updates counters used to generate each frame. """
@@ -123,6 +129,7 @@ class WorkerDataGenerator(QtCore.QObject):
         self.filenames = s.filenames
 
         # user input parameters
+        self.df_calc = s.df_calc
         self.sample_rate = s.sample_rate
         self.samples_per_raw_fft = s.samples_per_raw_fft
         self.noverlap = s.noverlap
@@ -354,7 +361,8 @@ class BSRAnimation(FigureCanvas):
         print('frame index: ', self.frame_index)
 
         # choose what to draw on the FigureCanvas
-        if (self.s.stop_index_count < (self.rcp_data.size - self.s.samples_per_hop)) and (self.plots or not self.was_setup):
+        if (self.s.stop_index_count < (self.rcp_data.size - self.s.samples_per_hop)) and (
+                self.plots or not self.was_setup):
 
             ####################################
             # Get Data for Plotting this Frame
@@ -367,10 +375,10 @@ class BSRAnimation(FigureCanvas):
                     # can only rewind to the first data plot
                     self.frame_index -= 1
                     rcp_x, rcp_y, lcp_x, lcp_y, files_label, time_label, current_index, \
-                    current_second = self.plots[self.frame_index]
+                    current_second, direct_signal_freq = self.plots[self.frame_index]
                 else:
                     rcp_x, rcp_y, lcp_x, lcp_y, files_label, time_label, current_index, \
-                    current_second = self.plots[self.frame_index]
+                    current_second, direct_signal_freq = self.plots[self.frame_index]
             elif plot_next_frame:
                 print('---------- b')
                 if self.frame_index == len(self.plots) - 1:
@@ -383,12 +391,12 @@ class BSRAnimation(FigureCanvas):
                     # there are plots in queue
                     self.frame_index += 1
                     rcp_x, rcp_y, lcp_x, lcp_y, files_label, time_label, current_index, \
-                    current_second = self.plots[self.frame_index]
+                    current_second, direct_signal_freq = self.plots[self.frame_index]
             elif repeat:
                 print('---------- c')
                 # plot the same frame, without updating any counters
                 rcp_x, rcp_y, lcp_x, lcp_y, files_label, time_label, current_index, \
-                current_second = self.plots[self.frame_index]
+                current_second, direct_signal_freq = self.plots[self.frame_index]
             elif self.plots:
                 print('---------- d')
                 # samples remaining in file, draw next plot in queue or setup initial empty figure
@@ -401,7 +409,7 @@ class BSRAnimation(FigureCanvas):
 
                 # worker_datagen thread has queued a plot, unpack result
                 rcp_x, rcp_y, lcp_x, lcp_y, files_label, time_label, current_index, \
-                current_second = self.plots[self.frame_index]
+                current_second, direct_signal_freq = self.plots[self.frame_index]
 
             elif not self.was_setup:
                 print('---------- e')
@@ -425,12 +433,16 @@ class BSRAnimation(FigureCanvas):
                 files_label = 'RCP file: ' + self.s.filenames[0] + '\nLCP file: ' + \
                               self.s.filenames[1]
 
+                # find the frequency of the direct signal, if it is present in this frame
+                direct_signal_freq = find_direct_signal_frequency(
+                    rcp_x, rcp_y, lcp_x, lcp_y, self.s.sample_rate, self.s.df_calc)
+
                 # store copy of counters, then update them
                 current_second = self.s.stop_sec_count
                 current_index = self.s.stop_index_count
 
                 data_tuple = (rcp_x, rcp_y, lcp_x, lcp_y, files_label, time_label, current_index,
-                              current_second)
+                              current_second, direct_signal_freq)
                 self.plots.append(data_tuple)
 
                 # only display an empty frame on the initial setup
@@ -440,15 +452,26 @@ class BSRAnimation(FigureCanvas):
                 print('an error has occurred')
                 # error has occurred
                 rcp_x = rcp_y = lcp_x = lcp_y = files_label = time_label = current_index = \
-                    current_second = None
+                    current_second = direct_signal_freq = None
 
             print('plots: ', len(self.plots))
             print('frame index: ', self.frame_index)
 
+            # the function returned None, meaning the direct signal may not be present in frame
+            # so center the plot on a fixed frequency instead
+            if not direct_signal_freq:
+                if self.s.mission == 'Rosetta':
+                    direct_signal_freq = -18.95
+                elif self.mission == 'Dawn':
+                    direct_signal_freq = 50
+                elif self.mission == 'userfile':
+                    direct_signal_freq = 0
+
+            # perfrom the plotting with Matplotlib onto the FigureCanvas
             self.draw_frame(rcp_x=rcp_x, rcp_y=rcp_y, lcp_x=lcp_x, lcp_y=lcp_y,
                             files_label=files_label, time_label=time_label,
                             current_index=current_index, current_second=current_second,
-                            results=results)
+                            results=results, direct_signal_freq=direct_signal_freq)
 
         elif self.s.stop_index_count < (self.rcp_data.size - self.s.samples_per_hop):
             # the animation is waiting for the worker_datagen thread to queue another plot
@@ -461,7 +484,8 @@ class BSRAnimation(FigureCanvas):
             self.timer.stop()
 
     def draw_frame(self, rcp_x=None, rcp_y=None, lcp_x=None, lcp_y=None, files_label=None,
-                   time_label=None, current_index=None, current_second=None, results=None):
+                   time_label=None, current_index=None, current_second=None, results=None,
+                   direct_signal_freq=None):
         # clear the active axes in figure
         self.signal_plot.cla()
         self.overview_plot.cla()
@@ -479,12 +503,11 @@ class BSRAnimation(FigureCanvas):
         self.signal_plot.plot(lcp_x, lcp_y, lw=0.7, label='LCP', color='red', zorder=20)
         self.signal_plot.legend(loc=2, fontsize=14, prop={"family": "Arial"})
 
-        # mark the estimated direct signal
-        # TODO: peak detection per frame
-        # self.signal_plot.axvline(x=self.s.freq_plot_center, lw=0.1, color='blue')
-        if self.frame_index != 0:
-            direct_signal = rcp_x[np.argmax(rcp_y)]
-            self.signal_plot.axvline(x=direct_signal, lw=0.1, color='blue')
+        # mark the estimated direct signal with a subtle vertical line, mostly used
+        # for troubleshooting the automated signal processing pipeline
+        if self.frame_index != 0 and self.timer.isActive():
+            # direct_signal_freq = rcp_x[np.argmax(rcp_y)]
+            self.signal_plot.axvline(x=direct_signal_freq, lw=0.1, color='blue')
 
         # plot labels to display metadata for this frame
         self.signal_plot.patch.set_visible(False)
@@ -503,6 +526,11 @@ class BSRAnimation(FigureCanvas):
         self.signal_plot.set_ylabel("Power (dB)", fontsize=15, **font_arial)
 
         # reset the window properties, which are cleared each frame
+        # override the defaults
+        default_window = get_plot_window(
+            direct_signal_freq, self.s.df_calc, self.s.pxx_min, self.s.pxx_max)
+        self.s.xlim_min, self.s.xlim_max, self.s.ylim_min, self.s.ylim_max = default_window
+
         self.signal_plot.set_xlim(self.s.xlim_min, self.s.xlim_max)
         self.signal_plot.set_ylim(self.s.ylim_min, self.s.ylim_max)
 
@@ -578,7 +606,8 @@ class BSRAnimation(FigureCanvas):
                 x=self.msmt.freq_local_min, lw=0.7, color='blue', linestyle='--')
             self.signal_plot.axvline(
                 x=self.msmt.freq_local_max, lw=0.7, color='blue', linestyle='--')
-            midpoint = self.msmt.freq_local_min + ((self.msmt.freq_local_max - self.msmt.freq_local_min) / 2)
+            midpoint = self.msmt.freq_local_min + ((self.msmt.freq_local_max
+                                                    - self.msmt.freq_local_min) / 2)
             an1 = self.signal_plot.annotate(
                 'Selected Range',
                 xy=(midpoint, self.msmt.Pxx_max_RCP * 1.1),
@@ -627,7 +656,8 @@ class BSRAnimation(FigureCanvas):
                 [(self.s.ylim_min + (self.s.ylim_max - self.s.ylim_min) * 0.1),
                  (self.s.ylim_min + (self.s.ylim_max - self.s.ylim_min) * 0.1)],
                 lw=1.4, color='black', linestyle='-', marker="D", markersize=4)
-            midpoint = min([self.msmt.freq_at_max, self.msmt.freq_at_local_max]) + (np.abs(self.msmt.freq_at_max - self.msmt.freq_at_local_max) / 2)
+            midpoint = min([self.msmt.freq_at_max, self.msmt.freq_at_local_max]) + (np.abs(
+                self.msmt.freq_at_max - self.msmt.freq_at_local_max) / 2)
             an4 = self.signal_plot.annotate(
                 'df',
                 xy=(midpoint, (self.s.ylim_min + (self.s.ylim_max - self.s.ylim_min) * 0.1)),
@@ -648,7 +678,8 @@ class BSRAnimation(FigureCanvas):
                 lw=1.3, color='black', linestyle='-', marker="D", markersize=3)
             an5 = self.signal_plot.annotate(
                 'bandwidth\nat -' + str(self.msmt.NdB_below) + ' dB',
-                xy=(self.msmt.bandwidth_start_RCP_at_max, (self.msmt.Pxx_max_RCP - self.msmt.NdB_below)),
+                xy=(self.msmt.bandwidth_start_RCP_at_max,
+                    (self.msmt.Pxx_max_RCP - self.msmt.NdB_below)),
                 xycoords='data',
                 xytext=(-70, 30),
                 textcoords='offset points',
