@@ -22,10 +22,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # Here, those custom classes are given functionality and linked together.
 
 
-from PyQt5.QtGui import QImage, QPixmap, QGuiApplication, QFont, QColor
+from PyQt5.QtGui import QImage, QPixmap, QGuiApplication, QFont, QColor, QCursor
 from PyQt5.QtCore import Qt, QTime, QDate, QDateTime
 from PyQt5.QtWidgets import QMainWindow, QAbstractItemView, QTableWidget, QTableWidgetItem, \
-    QDialog, QProgressBar, QFileDialog, QLabel, QGridLayout, QWidget, QDesktopWidget, QLineEdit
+    QDialog, QProgressBar, QFileDialog, QLabel, QGridLayout, QWidget, QDesktopWidget, QLineEdit, \
+    qApp
 
 from ui.ui_20210204.StartScreen_v32 import Ui_MainWindow as Start_Ui
 # from ui.ui_20201106.FileSelection_v18_dawn import Ui_MainWindow as File_Ui_Standard
@@ -487,6 +488,10 @@ class UserdefinedWindow(QMainWindow, Userdefined_Ui):
         self.custom_lineedit_lcp.clicked.connect(self.get_lcp_path)
         self.btn_back.clicked.connect(self.back_to_start)
         self.btn_continue.clicked.connect(self.show_file_selection_window)
+        # tooltips
+        children = self.findChildren(QLabelClickable)
+        for child in children:
+            child.clicked.connect(show_tooltip_on_click)
 
     def get_rcp_path(self):
         # todo: "try:"
@@ -543,16 +548,16 @@ class UserdefinedWindow(QMainWindow, Userdefined_Ui):
 
         descriptions = {
             'lbl_occ_duration': 'typically 1 min - 30 min or longer',
-            'lbl_sc_velocity': 'spacecraft orbital / flyby speed',
+            'band_freq': 'frequency used to transmit data',
             'lbl_lowest_alt': 'spacecraft distance above target surface'
         }
 
         self.add_info_icon(parent_container=self.horizontalLayout_6,
                            parameter_description=descriptions['lbl_occ_duration'])
         self.add_info_icon(parent_container=self.horizontalLayout_8,
-                           parameter_description=descriptions['lbl_sc_velocity'])
-        self.add_info_icon(parent_container=self.horizontalLayout_9,
                            parameter_description=descriptions['lbl_lowest_alt'])
+        self.add_info_icon(parent_container=self.horizontalLayout_9,
+                           parameter_description=descriptions['band_freq'])
 
     def add_info_icon(self, parent_container=None, parameter_description=None):
         # retrieve the info icon image from resources and resize it
@@ -561,7 +566,7 @@ class UserdefinedWindow(QMainWindow, Userdefined_Ui):
             18, 18, Qt.KeepAspectRatio, Qt.SmoothTransformation)
 
         # make an empty label widget to use as a canvas
-        icon = QLabel()
+        icon = QLabelClickable()
 
         # set the icon image
         icon.setPixmap(pixmap_icon)
@@ -935,6 +940,7 @@ class SignalWindow(QMainWindow, Signal_Ui):
         self.dateTimeEdit.setDisplayFormat('hh:mm:ss')
         self.spin_doy.setValue(int(datetime_as_pyqt.date().dayOfYear()))
         # display animation speed
+        self.spin_ani_speed.setMaximum(3)
         self.spin_ani_speed.setValue(round(1000 / s.interval, 2))
 
         # row 1 of group: "Plot Window Properties"
@@ -1098,7 +1104,9 @@ class SignalWindow(QMainWindow, Signal_Ui):
         self.spin_ymax_global.setValue(msmt.Pxx_max_RCP)
         self.spin_ymax_global_LCP.setValue(msmt.Pxx_LCP_at_max)
         self.spin_x_at_ymax_global.setValue(msmt.freq_at_max)
+        self.spin_bandwidth_global.setDecimals(1)
         self.spin_bandwidth_global.setValue(msmt.bandwidth_RCP_at_max)
+        self.spin_bandwidth_global_LCP.setDecimals(1)
         self.spin_bandwidth_global_LCP.setValue(msmt.bandwidth_LCP_at_max)
         self.spin_noise_variance_global.setValue(msmt.Pxx_noise_var_RCP)
         self.spin_noise_variance_global_LCP.setValue(msmt.Pxx_noise_var_LCP)
@@ -1107,8 +1115,10 @@ class SignalWindow(QMainWindow, Signal_Ui):
         self.spin_ymax_local.setValue(msmt.Pxx_local_max_RCP)
         self.spin_ymax_local_LCP.setValue(msmt.Pxx_LCP_at_local_max)
         self.spin_x_at_ymax_local.setValue(msmt.freq_at_local_max)
+        self.spin_bandwidth_local.setDecimals(1)
         self.spin_bandwidth_local.setValue(msmt.bandwidth_RCP_local_max)
-        self.spin_bandwidth_local_LCP.setValue(msmt.bandwidth_LCP_at_local_max)
+        self.spin_bandwidth_local_LCP.setDecimals(1)
+        self.spin_bandwidth_local_LCP.setValue(msmt.bandwidth_LCP_local_max)
         self.spin_delta_y.setValue(msmt.delta_Pxx_max_RCP)
         self.spin_delta_y_LCP.setValue(msmt.delta_Pxx_LCP)
         self.spin_delta_x_observed.setValue(msmt.df_obsv)
@@ -1137,22 +1147,30 @@ class SignalWindow(QMainWindow, Signal_Ui):
         # show new parameters to user
         self.show_parameters_plot_analysis(msmt)
 
-        is_calculated = True
+        # show annotations on plot
         self.signal_to_plot_analysis_results.emit(msmt)
-        if msmt.error_NdB_below:
-            # is_calculated = False
-            self.show_error_message('Error: Bandwidth cannot be measured this far below peak.')
-        if msmt.error_direct_signal:
-            # is_calculated = False
-            self.show_error_message(
-                'Warning: local max may not be a signal; '
-                'detectability limit is >= 3 dB above the noise.')
-        if msmt.error_finding_bandwidth:
-            # is_calculated = False
-            self.show_error_message('Error: Unable to detect the bandwidth of the specified peak.')
-        if is_calculated:
-            # self.signal_to_plot_analysis_results.emit(msmt)
-            pass
+
+        # provide error messages to help user diagnose issues
+        if self.msmt.error_NdB_below:
+            self.show_error_message('Error: Cannot measure bandwidth at noise levels. '
+                                    'Please measure bandwidth higher on the peak.')
+        if self.msmt.error_global_RCP:
+            self.show_error_message('Warning: No signal detected in RCP data; peak '
+                                    'detectability limit is at least 3 dB above the noise.')
+        if self.msmt.error_global_LCP:
+            self.show_error_message('Warning: No signal detected in LCP data; peak '
+                                    'detectability limit is at least 3 dB above the noise.')
+        if self.msmt.error_local_RCP:
+            self.show_error_message('Warning: No signal detected in selected '
+                                    'range of RCP data; peak detectability limit '
+                                    'is at least 3 dB above the noise.')
+        if self.msmt.error_local_LCP:
+            self.show_error_message('Warning: No signal detected in selected '
+                                    'range of LCP data; peak detectability limit '
+                                    'is at least 3 dB above the noise.')
+        if self.msmt.error_finding_bandwidth:
+            self.show_error_message('Error: Unable to measure the bandwidth of the specified '
+                                    'peak. Bandwidth will be set to 0 Hz.')
 
     def toggle_results(self):
         print("\nSignalWindow.toggle_results()\n")
@@ -1168,24 +1186,31 @@ class SignalWindow(QMainWindow, Signal_Ui):
             # print values to QSpinBoxes on Signal Analysis tab
             self.show_parameters_plot_analysis(self.msmt)
 
-            # provide error messages to help user diagnose issues
-            is_calculated = True
+            # show annotations on plot
             self.signal_to_plot_analysis_results.emit(self.msmt)
+
+            # provide error messages to help user diagnose issues
             if self.msmt.error_NdB_below:
-                # is_calculated = False
-                self.show_error_message('Error: Bandwidth cannot be measured this far below peak.')
-            if self.msmt.error_direct_signal:
-                # is_calculated = False
-                self.show_error_message(
-                    'Warning: local max may not be a signal; '
-                    'detectability limit is >= 3 dB above the noise.')
+                self.show_error_message('Error: Cannot measure bandwidth at noise levels. '
+                                        'Please measure bandwidth higher on the peak.')
+            if self.msmt.error_global_RCP:
+                self.show_error_message('Warning: No signal detected in RCP data; peak '
+                                        'detectability limit is at least 3 dB above the noise.')
+            if self.msmt.error_global_LCP:
+                self.show_error_message('Warning: No signal detected in LCP data; peak '
+                                        'detectability limit is at least 3 dB above the noise.')
+            if self.msmt.error_local_RCP:
+                self.show_error_message('Warning: No signal detected in selected '
+                                        'range of RCP data; peak detectability limit '
+                                        'is at least 3 dB above the noise.')
+            if self.msmt.error_local_LCP:
+                self.show_error_message('Warning: No signal detected in selected '
+                                        'range of LCP data; peak detectability limit '
+                                        'is at least 3 dB above the noise.')
             if self.msmt.error_finding_bandwidth:
-                # is_calculated = False
-                self.show_error_message(
-                    'Error: Unable to detect the bandwidth of the specified peak.')
-            if is_calculated:
-                # self.signal_to_plot_analysis_results.emit(self.msmt)
-                pass
+                self.show_error_message('Error: Unable to measure the bandwidth of the specified '
+                                        'peak. Bandwidth will be set to 0 Hz.')
+
         elif self.tab_widget.currentIndex() == 0:
             # hide results
             print("hide results")
@@ -1232,6 +1257,7 @@ class SignalWindow(QMainWindow, Signal_Ui):
 
     def show_error_message(self, message):
         error_dialog = QtWidgets.QErrorMessage()
+        error_dialog.setWindowModality(QtCore.Qt.WindowModal)
         error_dialog.showMessage(message)
         error_dialog.exec_()
 
@@ -1271,6 +1297,8 @@ class SignalWindow(QMainWindow, Signal_Ui):
         pass
 
     def set_tooltips(self):
+        """ A function to define the tooltip descriptions for user input parameters,
+        then assign each description to its corresponding QWidget. """
 
         descriptions = {
             'lbl_occ_duration': 'typically 1 min - 30 min or longer',
@@ -1360,12 +1388,13 @@ class SignalWindow(QMainWindow, Signal_Ui):
 
     def add_info_icon(self, parent_container=None, parameter_description=None):
         # retrieve the info icon image from resources and resize it
+        # TODO: cache this resource using PyQt5 and FBS
         pixmap_icon = QPixmap(QImage(self.ctx.img_info_icon()))
         pixmap_icon = pixmap_icon.scaled(
             18, 18, Qt.KeepAspectRatio, Qt.SmoothTransformation)
 
         # make an empty label widget to use as a canvas
-        icon = QLabel()
+        icon = QLabelClickable()
 
         # set the icon image
         icon.setPixmap(pixmap_icon)
@@ -1410,6 +1439,10 @@ class SignalWindow(QMainWindow, Signal_Ui):
         self.btn_next_frame.clicked.connect(self.show_processing_tab)
         self.btn_next_frame.clicked.connect(self.animation_widget.show_next_frame)
         self.btn_export.clicked.connect(self.export_plot)
+        # tooltips
+        children = self.findChildren(QLabelClickable)
+        for child in children:
+            child.clicked.connect(show_tooltip_on_click)
 
     def format_text_in_gui(self):
         # some of the text labels in the frontend require rich text formatting
@@ -1541,12 +1574,6 @@ class WorkerDataIngestion(QtCore.QObject):
 
 
 class IngestionProgress(QDialog):
-    """
-    Simple dialog that consists of a Progress Bar and a Button.
-    Clicking on the button results in the start of a timer and
-    updates the progress bar.
-    """
-
     def __init__(self, parent=None):
         super().__init__(parent)
         self.initUI()
@@ -1555,7 +1582,7 @@ class IngestionProgress(QDialog):
     def initUI(self):
         self.setWindowTitle('Loading Data from Files...')
         self.progress = QProgressBar(self)
-        self.progress.setGeometry(0, 0, 300, 25)
+        self.progress.setGeometry(0, 0, 500, 25)
         self.progress.setMaximum(100)
         self.setModal(True)
 
@@ -1571,9 +1598,9 @@ class IngestionProgress(QDialog):
         elif count <= 25:
             self.setWindowTitle('Loading Data from Files... (2/2)')
         elif count <= 40:
-            self.setWindowTitle('Cleaning Data... (1/2)')
+            self.setWindowTitle('Preparing Data... (1/2)')
         elif count <= 45:
-            self.setWindowTitle('Cleaning Data... (2/2)')
+            self.setWindowTitle('Preparing Data... (2/2)')
         elif count <= 50:
             self.setWindowTitle('Processing Data...')
         self.progress.setValue(count)
@@ -1638,6 +1665,13 @@ class ExportWindow(QMainWindow, ExportMenu_Ui):
         self.close()
 
 
+class QLabelClickable(QLabel):
+    clicked = QtCore.pyqtSignal(str)
+
+    def mousePressEvent(self, ev):
+        self.clicked.emit(self.toolTip())
+
+
 def center_window(main_window):
     # geometry of the main window
     qr = main_window.frameGeometry()
@@ -1678,3 +1712,11 @@ def prevent_accidental_scroll_adjustments(window):
         box.wheelEvent = lambda *event: None
     for box in timeedits:
         box.wheelEvent = lambda *event: None
+
+
+def show_tooltip_on_click(description):
+    globalCursorPos = QCursor.pos()
+    mouseScreen = qApp.desktop().screenNumber(globalCursorPos)
+    mouseScreenGeometry = qApp.desktop().screen(mouseScreen).geometry()
+    localCursorPos = globalCursorPos - mouseScreenGeometry.topLeft()
+    QtWidgets.QToolTip.showText(localCursorPos, description)
