@@ -1,3 +1,6 @@
+# IMPORTANT UPDATE (03/03/2021): 
+PARSE v1.0 is officially ready as of March 3, 2021. Any versions of the repository prior to this date are missing key documentation and have known software bugs. For more info, please check the commit logs or contact the developer at paulsirri@gmail.com
+
 ## PARSE: Processing & Analysis for Radio Science Experiments
 ##### Elizabeth M. Palmer, Paul Sirri, Essam Heggy
 ###### University of Southern California, Department of Electrical and Computer Engineering
@@ -25,7 +28,11 @@ After choosing the data file and supplying basic target body information and spa
   - For Mac OS X: navigate to "PARSE-1.0 / build / mac / PARSE.dmg"
   - For Microsoft Windows: navigate to "PARSE-1.0 / build / windows / PARSESetup.exe"
     - Note: If using Microsoft Windows, the installer may display a warning message. If so, click "More Info" and "Run Anyway" to begin the installation. 
-4. Once the installation is completed, PARSE will be available in your applications folder. Due to the size of the bundled data files, please expect 1-2 minute delays when opening the application or its installer for the first time
+4. Once the installation is completed, PARSE will be available in your applications folder. Due to the size of the bundled data files, please expect 1-2 minute delays when opening the application or its installer for the first time.
+5. After opening the application, use the following menu options to learn about how PARSE works. Some of these resources have been linked here for your convenience.
+  - [Tutorial Video](https://youtu.be/JcRaaFpzjIg): a brief illustrative demonstration of PARSE for new users
+  - [User's Guide](https://github.com/PARSE-team/PARSE/blob/main/UsersGuide_v1.pdf): the official documentation for PARSE
+  - Relevant Publications: publications that discuss PARSE's underlying pipeline
 
 #### Developers:
 To begin working with source code directly, install Git LFS on your device before cloning this repository.
