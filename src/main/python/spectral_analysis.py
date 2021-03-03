@@ -124,7 +124,7 @@ def confirm_ndb_acceptable(y, noise_var):
 
 
 def find_direct_signal_frequency(rcp_x, rcp_y, lcp_x, lcp_y, sample_rate, df_calc):
-    # TODO: check if scipy.signal.find_peaks() can be applied instead of manually...
+    # TODO: check if scipy.signal.find_peaks() can be used instead
 
     noise_variability = calculate_noise_variability(rcp_x, rcp_y, lcp_y, sample_rate, df_calc)
     detectability_threshold = noise_variability + 3.0
@@ -269,10 +269,18 @@ def get_spectral_analysis_results(s, freqs, Pxx, freqs_LCP, Pxx_LCP, NdB_below=N
 
     # if the user has default x-range set, be sure that default appears on initial plot window
     if not freq_local_min and not freq_local_max:
+        # SET THE DEFAULT "SELECTED RANGE" TO SPAN PLOT WINDOW (INCLUDING MARGIN)
         # ensure the selected range can fit within default plot window by adding a fixed-length pad
+        # range_pad = round((s.xlim_max - s.xlim_min) * 0.15)
+        # msmt.freq_local_min = copy.deepcopy(s.xlim_min) + range_pad
+        # msmt.freq_local_max = copy.deepcopy(s.xlim_max) - range_pad
+
+        # SET THE DEFAULT "SELECTED RANGE" TO SPAN ONE SIDE OF THE PLOT
+        # ensure the selected range can fit within default plot window by adding a fixed-length pad
+        plot_center = find_direct_signal_frequency(freqs, Pxx, freqs_LCP, Pxx_LCP, s.sample_rate, s.df_calc)
         range_pad = round((s.xlim_max - s.xlim_min) * 0.15)
-        msmt.freq_local_min = copy.deepcopy(s.xlim_min) + range_pad
-        msmt.freq_local_max = copy.deepcopy(s.xlim_max) - range_pad
+        msmt.freq_local_min = s.xlim_min + range_pad
+        msmt.freq_local_max = plot_center - round((plot_center - msmt.freq_local_min) * 0.20)
 
     in_selected_range = np.argwhere((freqs > msmt.freq_local_min) & (freqs < msmt.freq_local_max))
 
