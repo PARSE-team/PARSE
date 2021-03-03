@@ -8,8 +8,7 @@ First Release: (under review with [*SoftwareX*](https://www.journals.elsevier.co
 
 PARSE is a user-friendly GUI tool to assist planetary scientists in analyzing Deep Space Network (DSN) radio science datasets without requiring expertise in signal processing. PARSE can be used on bistatic radar (BSR) surface-scatter experiments, which use the radio communications antenna aboard a spacecraft to transmit X- or S-band radiowaves that scatter from the planetary object's surface and are then received by the DSN. BSR surface echoes can be used to quantify surface roughness at the cm-dm scale, for example, which can be used to constrain thermophysical models of planetary regoliths, support detailed geomorphological mapping, and reduce risk associated with site selection for landing and sampling missions. An example of such an experiment is given by [Palmer, Heggy & Kofman (2017)](https://doi.org/10.1038/s41467-017-00434-6).
 
-A video tutorial of PARSE is available through the link below:
-[*PARSE Tutorial Video*](https://youtu.be/JcRaaFpzjIg)
+An illustrative demonstration of PARSE is available via the [PARSE Tutorial Video](https://youtu.be/JcRaaFpzjIg).
 
 ###### Workflow Summary:
 ![PARSE flowchart](https://github.com/PARSE-team/PARSE/blob/main/src/main/resources/base/softwareX_fig_flowchart_v6_4x4.png?raw=true)
@@ -18,7 +17,7 @@ After choosing the data file and supplying basic target body information and spa
 
 ### Installation & Getting Started
 
-##### Users:
+#### Users:
 1. In the column on the right-hand side of the repository homepage, click "Releases".
 2. Select a release, then click on "Source code (zip)" to download the project repository.
    Note: The download is large (6-7 GB) since it includes raw data files, so it will take time to download depending on your connection speeds.
@@ -28,7 +27,7 @@ After choosing the data file and supplying basic target body information and spa
     - Note: If using Microsoft Windows, the installer may display a warning message. If so, click "More Info" and "Run Anyway" to begin the installation. 
 4. Once the installation is completed, PARSE will be available in your applications folder. Due to the size of the bundled data files, please expect 1-2 minute delays when opening the application or its installer for the first time
 
-##### Developers:
+#### Developers:
 To begin working with source code directly, install Git LFS on your device before cloning this repository.
 
 ### Error Reporting:
