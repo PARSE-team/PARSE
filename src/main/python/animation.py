@@ -597,6 +597,10 @@ class BSRAnimation(FigureCanvas):
             np.min(self.s.overview_pxx_rcp) - signal_pad,
             np.max(self.s.overview_pxx_rcp) + signal_pad)
 
+        # override rosetta limits due to truncation of the original file
+        if self.s.mission == 'Rosetta':
+            self.overview_plot.set_ylim(0, 70)
+
         # update the counter
         self.s.stop_index_count = current_index
 
