@@ -158,7 +158,7 @@ class TutorialWindow(QMainWindow, About_Ui):
         self.setupUi(self)
 
         # set the title
-        self.setWindowTitle("PARSE - Tutorial")
+        self.setWindowTitle("PARSE - Tutorial Video")
 
         # set text to be selectable
         set_text_selectable(self)
@@ -166,12 +166,12 @@ class TutorialWindow(QMainWindow, About_Ui):
         # connect UI elements using slots and signals
         self.pushButton.clicked.connect(self.back_to_menu)
 
-        self.label.setText("A video tutorial is available through the Youtube link below:")
+        self.label.setText("The Tutorial Video provides a brief illustrative demonstration of PARSE for new users.")
 
         # provide link to email
         self.label_2.setOpenExternalLinks(True)
         self.label_2.setText(
-            "<a href=https://www.youtube.com>https://www.youtube.com</a>")
+            "<a href=https://youtu.be/JcRaaFpzjIg>PARSE Tutorial Video</a>")
         self.label_2.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.LinksAccessibleByMouse)
 
         self.label_3.setText("")
@@ -192,7 +192,7 @@ class ManualWindow(QMainWindow, About_Ui):
         self.setupUi(self)
 
         # set the title
-        self.setWindowTitle("PARSE - Manual")
+        self.setWindowTitle("PARSE - User's Guide")
 
         # set text to be selectable
         set_text_selectable(self)
@@ -201,13 +201,13 @@ class ManualWindow(QMainWindow, About_Ui):
         self.pushButton.clicked.connect(self.back_to_menu)
 
         self.label.setText(
-            "A copy of the official User's Guide is available through the link below:")
+            "The User's Guide provides thorough documentation for how to use PARSE:")
 
         # provide link to email
         self.label_2.setOpenExternalLinks(True)
         self.label_2.setText(
-            "<a href=https://github.com/PARSE-team/PARSE/blob/main/Manual.pdf>"
-            "https://github.com/PARSE-team/PARSE/blob/main/Manual.pdf</a>")
+            "<a href=https://github.com/PARSE-team/PARSE/blob/main/UsersGuide_v1.pdf>"
+            "PARSE User's Guide</a>")
         self.label_2.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.LinksAccessibleByMouse)
 
         self.label_3.setText("")
@@ -415,8 +415,7 @@ class ContactUsWindow(QMainWindow, About_Ui):
         # connect UI elements using slots and signals
         self.pushButton.clicked.connect(self.back_to_menu)
 
-        self.label.setText("To contact the developer via email or GitHub,\n"
-                           "please use the following links:")
+        self.label.setText("To contact the developer via email or GitHub:\n")
 
         # provide link to email
         self.label_2.setOpenExternalLinks(True)
@@ -940,6 +939,17 @@ class SignalWindow(QMainWindow, Signal_Ui):
         self.dateTimeEdit.setDateTime(datetime_as_pyqt)
         self.dateTimeEdit.setDisplayFormat('hh:mm:ss')
         self.spin_doy.setValue(int(datetime_as_pyqt.date().dayOfYear()))
+
+        # set minimum and maximum times
+        datetime_as_pyqt_start = convert_astropy_to_pyqt(self.rcp_file.start_time)
+        datetime_as_pyqt_end = convert_astropy_to_pyqt(
+            self.rcp_file.stop_time - TimeDelta(s.seconds_for_welch, format='sec'))
+        # self.dateTimeEdit.setMinimumDateTime(datetime_as_pyqt_start)
+        # self.dateTimeEdit.setMaximumDateTime(datetime_as_pyqt_end)
+        self.spin_doy.setMinimum(int(datetime_as_pyqt_start.date().dayOfYear()))
+        self.spin_doy.setMaximum(int(datetime_as_pyqt_end.date().dayOfYear()))
+
+
         # display animation speed
         self.spin_ani_speed.setMaximum(3)
         self.spin_ani_speed.setValue(round(1000 / s.interval, 2))
@@ -1237,8 +1247,8 @@ class SignalWindow(QMainWindow, Signal_Ui):
         self.tab_widget.setTabEnabled(1, True)
 
     def export_plot(self):
-        rcp_x, rcp_y, lcp_x, lcp_y, files_label, time_label, current_index, \
-        current_second = self.animation_widget.plots[self.animation_widget.frame_index]
+        rcp_x, rcp_y, lcp_x, lcp_y, files_label, time_label, current_index, current_second, \
+        direct_signal_freq = self.animation_widget.plots[self.animation_widget.frame_index]
         self.export_window = ExportWindow(self.ctx, rcp_x=rcp_x, rcp_y=rcp_y, lcp_x=lcp_x,
                                           lcp_y=lcp_y, fig=self.animation_widget.fig)
         self.export_window.show()
