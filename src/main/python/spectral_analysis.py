@@ -21,7 +21,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
 import numpy as np
-from scipy import signal
 import copy
 
 
@@ -114,8 +113,6 @@ def confirm_ndb_acceptable(y, noise_var):
     # height at which to measure bandwidth (aka bw)
     bw_height = max(y) - noise_var
     if (bw_height <= 0) or (bw_height <= noise_var):
-        """print('Error: Cannot measure bandwidth at or below noise levels. '
-              'Too far below peak. Setting default to 2 dB below peak.')"""
         error_NdB_below = True
         return error_NdB_below
     else:
@@ -220,9 +217,8 @@ def get_bandwidth(msmt, x, y, n_dB):
             break
 
     if bw_start and bw_stop:
-        print('\nFOUND BANDWIDTH\n')
+        pass
     else:
-        print('\nDID NOT FIND BANDWIDTH\n')
         msmt.error_finding_bandwidth = True
 
     bw = np.abs(bw_stop - bw_start)
@@ -256,13 +252,13 @@ def get_spectral_analysis_results(s, freqs, Pxx, freqs_LCP, Pxx_LCP, NdB_below=N
     # width. In this example, we are telling the program to measure bandwidths at a
     # height of 10 dB below the top of the peak.
     # Display Name in GUI: “Measure bandwidths at <___> (dB) below peaks”
-    msmt.NdB_below = set_value(NdB_below, default=2)  # default	# TODO: ADJUSTABLE
+    msmt.NdB_below = set_value(NdB_below, default=2)  # adjustable
 
     # Find local maximum between these next two variables
     # Display Name in GUI: “X-Axis min (Hz)”
-    msmt.freq_local_min = set_value(freq_local_min, default=s.xlim_min)  # TODO: ADJUSTABLE
+    msmt.freq_local_min = set_value(freq_local_min, default=s.xlim_min)  # adjustable
     # Display Name in GUI: “X-Axis max (Hz)”
-    msmt.freq_local_max = set_value(freq_local_max, default=s.xlim_max)  # TODO: ADJUSTABLE
+    msmt.freq_local_max = set_value(freq_local_max, default=s.xlim_max)  # adjustable
 
     # signal considered "buried in the noise" unless it is more than 3 dB above the noise level
     # detectability_threshold = 3.0
@@ -277,7 +273,8 @@ def get_spectral_analysis_results(s, freqs, Pxx, freqs_LCP, Pxx_LCP, NdB_below=N
 
         # SET THE DEFAULT "SELECTED RANGE" TO SPAN ONE SIDE OF THE PLOT
         # ensure the selected range can fit within default plot window by adding a fixed-length pad
-        plot_center = find_direct_signal_frequency(freqs, Pxx, freqs_LCP, Pxx_LCP, s.sample_rate, s.df_calc)
+        plot_center = find_direct_signal_frequency(freqs, Pxx, freqs_LCP, Pxx_LCP, s.sample_rate,
+                                                   s.df_calc)
         range_pad = round((s.xlim_max - s.xlim_min) * 0.15)
         msmt.freq_local_min = s.xlim_min + range_pad
         msmt.freq_local_max = plot_center - round((plot_center - msmt.freq_local_min) * 0.20)
@@ -301,19 +298,16 @@ def get_spectral_analysis_results(s, freqs, Pxx, freqs_LCP, Pxx_LCP, NdB_below=N
     # Display Name in GUI: “X at Y-Max”
     msmt.freq_at_max = freqs[np.argmax(Pxx)]
 
-    # todo: remove?
     if s.mission == 'Rosetta':
-        # FIXME: multiple points?
-        # FIXME: remove the false peak at 0
         where_to_look1, where_to_look2 = 0, 0
         if np.any(freqs < -0.5):
             where_to_look1 = np.max(np.argwhere(freqs < -0.5))
         else:
-            print('errorA')
+            print('error A')
         if np.any(freqs > 0.5):
             where_to_look2 = np.min(np.argwhere(freqs > 0.5))
         else:
-            print('errorB')
+            print('error B')
         # where_to_look = np.max(y[where_to_look1:where_to_look2])
 
         Pxx_copy = copy.deepcopy(Pxx)

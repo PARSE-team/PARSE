@@ -149,8 +149,6 @@ class WorkerDataGenerator(QtCore.QObject):
     @QtCore.pyqtSlot(object, object, object)
     def run(self, s, rcp_data, lcp_data):
 
-        print('SLOT: WorkerDataGenerator.run(s, rcp_data, lcp_data)\n')
-
         # unpack all data, settings, and parameters required to generate plots
         self.setup(s, rcp_data, lcp_data)
 
@@ -202,8 +200,6 @@ class BSRAnimation(FigureCanvas):
     signal_to_run_worker = QtCore.pyqtSignal(object, object, object)
 
     def __init__(self, parent=None, width=5, height=4, dpi=100):
-        print("\nBSRAnimation.__init__()")
-
         # instantiate figure
         self.fig = Figure(figsize=(width, height), dpi=dpi)
 
@@ -332,12 +328,10 @@ class BSRAnimation(FigureCanvas):
     def show_next_frame(self):
         self.pause()
         if self.frame_index == len(self.plots) - 1:
-            print('t1!')
             self.start_worker()
             time.sleep(0.5)
             self.pause_worker()
         elif (len(self.plots) - 1 - self.frame_index) < 10:
-            print('t2!')
             self.start_worker()
             time.sleep(0.1)
             self.pause_worker()
@@ -357,8 +351,6 @@ class BSRAnimation(FigureCanvas):
     def update_frame(self, plot_previous_frame=False, plot_next_frame=False, repeat=False,
                      results=False):
         """ A method to call each time the interval timer finishes. """
-        print('plots: ', len(self.plots))
-        print('frame index: ', self.frame_index)
 
         # choose what to draw on the FigureCanvas
         if (self.s.stop_index_count < (self.rcp_data.size - self.s.samples_per_hop)) and (
@@ -369,7 +361,6 @@ class BSRAnimation(FigureCanvas):
             ####################################
 
             if plot_previous_frame:
-                print('---------- a')
                 # the user would like to redraw the previous frame
                 if self.frame_index > 0:
                     # can only rewind to the first data plot
@@ -380,40 +371,30 @@ class BSRAnimation(FigureCanvas):
                     rcp_x, rcp_y, lcp_x, lcp_y, files_label, time_label, current_index, \
                     current_second, direct_signal_freq = self.plots[self.frame_index]
             elif plot_next_frame:
-                print('---------- b')
                 if self.frame_index == len(self.plots) - 1:
-                    print('no more frames ready')
                     self.start_worker()
                     time.sleep(0.5)
                     self.pause_worker()
                 if self.frame_index < len(self.plots) - 1:
-                    print('oops')
                     # there are plots in queue
                     self.frame_index += 1
                     rcp_x, rcp_y, lcp_x, lcp_y, files_label, time_label, current_index, \
                     current_second, direct_signal_freq = self.plots[self.frame_index]
             elif repeat:
-                print('---------- c')
                 # plot the same frame, without updating any counters
                 rcp_x, rcp_y, lcp_x, lcp_y, files_label, time_label, current_index, \
                 current_second, direct_signal_freq = self.plots[self.frame_index]
             elif self.plots:
-                print('---------- d')
                 # samples remaining in file, draw next plot in queue or setup initial empty figure
                 # save recent plots so the user can rewind if needed
 
                 self.frame_index += 1
-
-                print('self.s.stop_index_count: ', self.s.stop_index_count)
-                print('self.rcp_data.size:      ', self.rcp_data.size)
 
                 # worker_datagen thread has queued a plot, unpack result
                 rcp_x, rcp_y, lcp_x, lcp_y, files_label, time_label, current_index, \
                 current_second, direct_signal_freq = self.plots[self.frame_index]
 
             elif not self.was_setup:
-                print('---------- e')
-                # FIXME: what's the point of having an initial empty frame?
 
                 self.frame_index = 0
 
@@ -453,9 +434,6 @@ class BSRAnimation(FigureCanvas):
                 # error has occurred
                 rcp_x = rcp_y = lcp_x = lcp_y = files_label = time_label = current_index = \
                     current_second = direct_signal_freq = None
-
-            print('plots: ', len(self.plots))
-            print('frame index: ', self.frame_index)
 
             # the function returned None, meaning the direct signal may not be present in frame
             # so center the plot on a fixed frequency instead

@@ -22,20 +22,17 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # Here, those custom classes are given functionality and linked together.
 
 
-from PyQt5.QtGui import QImage, QPixmap, QGuiApplication, QFont, QColor, QCursor
-from PyQt5.QtCore import Qt, QTime, QDate, QDateTime
+from PyQt5.QtGui import QImage, QPixmap, QGuiApplication, QColor, QCursor
+from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QMainWindow, QAbstractItemView, QTableWidget, QTableWidgetItem, \
-    QDialog, QProgressBar, QFileDialog, QLabel, QGridLayout, QWidget, QDesktopWidget, QLineEdit, \
-    qApp
+    QDialog, QProgressBar, QFileDialog, QLabel, QDesktopWidget, QLineEdit, qApp
 
 from ui.ui_20210204.StartScreen_v32 import Ui_MainWindow as Start_Ui
-# from ui.ui_20201106.FileSelection_v18_dawn import Ui_MainWindow as File_Ui_Standard
 from ui.ui_20210204.FileSelection_Standard_v20 import Ui_MainWindow as File_Ui_Standard
-# from ui.ui_20200906.FileSelection_v13 import Ui_MainWindow as File_Ui_DetachedLabel
 from ui.ui_20210204.FileSelection_Detached_v20 import Ui_MainWindow as File_Ui_DetachedLabel
 from ui.ui_20210204.SignalAnalysis_v38 import Ui_MainWindow as Signal_Ui
 from ui.ui_20210204.ExportMenu_v2 import Ui_MainWindow as ExportMenu_Ui
-from ui.ui_20210129.glucokeep_about import Ui_MainWindow as About_Ui
+from ui.ui_20210129.AboutWindow import Ui_MainWindow as About_Ui
 from ui.ui_20210204.UserdefinedMenu_v2 import Ui_MainWindow as Userdefined_Ui
 
 from read_data import find_polar_pair, file_to_numpy, get_iq_data, get_files, get_sample_rate, \
@@ -44,7 +41,7 @@ from read_data import find_polar_pair, file_to_numpy, get_iq_data, get_files, ge
     convert_pyqt_to_astropy
 from signal_processing import get_signal_processing_parameters
 from spectral_analysis import get_spectral_analysis_results
-from astropy.time import Time, TimeDelta
+from astropy.time import TimeDelta
 import numpy as np
 import time
 import os
@@ -166,7 +163,8 @@ class TutorialWindow(QMainWindow, About_Ui):
         # connect UI elements using slots and signals
         self.pushButton.clicked.connect(self.back_to_menu)
 
-        self.label.setText("The Tutorial Video provides a brief illustrative demonstration of PARSE for new users.")
+        self.label.setText("The Tutorial Video provides a brief illustrative "
+                           "demonstration of PARSE for new users.")
 
         # provide link to email
         self.label_2.setOpenExternalLinks(True)
@@ -494,10 +492,8 @@ class UserdefinedWindow(QMainWindow, Userdefined_Ui):
             child.clicked.connect(show_tooltip_on_click)
 
     def get_rcp_path(self):
-        # todo: "try:"
         self.rcp_path = QFileDialog.getOpenFileName()[0]
         if self.rcp_path:
-            print("chose RCP file: " + str(self.rcp_path))
             self.custom_lineedit_rcp.setText(self.rcp_path)
         else:
             print("directory error")
@@ -505,7 +501,6 @@ class UserdefinedWindow(QMainWindow, Userdefined_Ui):
     def get_lcp_path(self):
         self.lcp_path = QFileDialog.getOpenFileName()[0]
         if self.lcp_path:
-            print("chose LCP file: " + str(self.lcp_path))
             self.custom_lineedit_lcp.setText(self.lcp_path)
         else:
             print("directory error")
@@ -516,9 +511,6 @@ class UserdefinedWindow(QMainWindow, Userdefined_Ui):
         self.close()
 
     def show_file_selection_window(self):
-        print('\n\nrcp_path: ', self.rcp_path)
-        print('lcp_path: ', self.lcp_path)
-        print('band_name: ', self.band_name)
         # read inputs to "Acquisition Geometry"
         self.dt_occ = round(self.spin_occ_duration.value() * 60)
         self.radius_target = int(self.spin_eq_radius.value() * 1000)
@@ -536,12 +528,7 @@ class UserdefinedWindow(QMainWindow, Userdefined_Ui):
         self.close()
 
     def set_min_and_max_limits(self):
-        # todo: implement
-        """maximum_seconds = np.floor((self.rcp_file.stop_time
-                                    - self.rcp_file.start_time).to_value('sec')
-                                   - self.current_settings.seconds_for_welch)
-        maximum_seconds = TimeDelta(maximum_seconds, format='sec')
-        max_datetime = (self.rcp_file.start_time + maximum_seconds).strf('')"""
+        # TODO: implement
         pass
 
     def set_tooltips(self):
@@ -876,9 +863,6 @@ class SignalWindow(QMainWindow, Signal_Ui):
 
         # dialog box to show worker progress
         self.progress_window = IngestionProgress(self.ctx, parent=self)
-        # self.progress_window.setFocus(True)
-        # self.progress_window.raise_()
-        # self.progress_window.activateWindow()
 
         # connect signals to slots AFTER moving the object to the thread
         self.connect_signals_to_slots()
@@ -948,7 +932,6 @@ class SignalWindow(QMainWindow, Signal_Ui):
         # self.dateTimeEdit.setMaximumDateTime(datetime_as_pyqt_end)
         self.spin_doy.setMinimum(int(datetime_as_pyqt_start.date().dayOfYear()))
         self.spin_doy.setMaximum(int(datetime_as_pyqt_end.date().dayOfYear()))
-
 
         # display animation speed
         self.spin_ani_speed.setMaximum(3)
@@ -1184,7 +1167,6 @@ class SignalWindow(QMainWindow, Signal_Ui):
                                     'peak. Bandwidth will be set to 0 Hz.')
 
     def toggle_results(self):
-        print("\nSignalWindow.toggle_results()\n")
         if self.tab_widget.currentIndex() == 1:
             # get measurements for plot analysis using data from current RCP frame, use defaults
             self.msmt = get_spectral_analysis_results(
@@ -1224,23 +1206,18 @@ class SignalWindow(QMainWindow, Signal_Ui):
 
         elif self.tab_widget.currentIndex() == 0:
             # hide results
-            print("hide results")
             self.signal_to_hide_analysis_results.emit()
 
     def setup_animation(self, s, rcp_data, lcp_data):
-        print("\nSignalWindow.setup_animation()")
         self.animation_widget.setup(s, rcp_data, lcp_data)
-        # TODO: QDialog to ask if the user wants to reset the currently running animation
 
     def play_animation(self):
-        print("\nSignalWindow.play_animation()")
         self.animation_widget.play()
 
         # only allow the user to analyze a plot if the animation is paused
         self.tab_widget.setTabEnabled(1, False)
 
     def pause_animation(self):
-        print("\nSignalWindow.pause_animation()")
         self.animation_widget.pause()
 
         # only allow the user to analyze a plot if the animation is paused
@@ -1254,7 +1231,6 @@ class SignalWindow(QMainWindow, Signal_Ui):
         self.export_window.show()
 
     def back_to_files(self):
-        print('SignalWindow.back_to_files(self)')
         self.pause_animation()
         self.back_to_window = None
         if self.source == 'rosetta':
@@ -1299,12 +1275,7 @@ class SignalWindow(QMainWindow, Signal_Ui):
         return datetime_pyqt
 
     def set_min_and_max_limits(self):
-        # todo: implement
-        """maximum_seconds = np.floor((self.rcp_file.stop_time
-                                    - self.rcp_file.start_time).to_value('sec')
-                                   - self.current_settings.seconds_for_welch)
-        maximum_seconds = TimeDelta(maximum_seconds, format='sec')
-        max_datetime = (self.rcp_file.start_time + maximum_seconds).strf('')"""
+        # TODO: implement
         pass
 
     def set_tooltips(self):

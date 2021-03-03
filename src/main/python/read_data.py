@@ -117,7 +117,6 @@ def get_files_rosetta(directory):
                             pair.path_to_data = file.path
                             pair_pending.remove(file_name)
 
-    # FIXME: does this slow down the program?
     # for each DataLabel, process the label and store any useful metadata
     for pair in paired_files:
         pair.label = read_label(pair.path_to_label)
@@ -139,8 +138,6 @@ def get_files_dawn(directory):
 
         if file.is_file and file.name.endswith('.npy'):
 
-            print(file.name)
-
             file_name = file.name[:-4]
 
             label = None
@@ -155,9 +152,6 @@ def get_files_dawn(directory):
             band_name = 'X'
 
             # polarization
-            print(file.name)
-            print(len(file.name))
-            print(type(file.name))
             polarization = file.name[25]
             if polarization is 'R':
                 polarization = 'RIGHT CIRCULAR'
@@ -197,10 +191,6 @@ def get_files_user(path_rcp, path_lcp, band_name):
 
         file_name = filepath.split('/')[-1]
 
-        label = None
-
-        path_to_label = None
-
         path_to_data = filepath
 
         mission = 'userfile'
@@ -219,16 +209,6 @@ def get_files_user(path_rcp, path_lcp, band_name):
         first_line, last_line = get_first_and_last_lines_of_ascii(path_to_data)
         start_time = yds_to_ymdhms(first_line)
         stop_time = yds_to_ymdhms(last_line)
-
-        print()
-        print('----- FILE INFO -----')
-        print('file_name: ', file_name)
-        print('path_to_data: ', path_to_data)
-        print('mission: ', mission)
-        print('band_name_freq: ', band_name_freq)
-        print('polarization: ', polarization)
-        print('start_time: ', start_time)
-        print('stop_time: ', stop_time)
 
         # create a new DataLabel object
         user_files.append(DataLabel(file_name=file_name,
@@ -334,8 +314,6 @@ def find_polar_pair_dawn(chosen_file, dl_list):
             if chosen_file.stop_time == dl.stop_time:
                 if chosen_file.start_time == dl.start_time:
                     # both files share same time series
-                    # TODO: handle edge case where files have different sample rates (rows)
-                    # FIXME: too slow, find a better solution
                     # if rows_in_file(dl.path_to_data) == rows_in_file(chosen_file.path_to_data):
                     # both files share same number of rows
                     if chosen_file.band_name == dl.band_name:

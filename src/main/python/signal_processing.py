@@ -237,9 +237,6 @@ def get_signal_overview(rcp_data, lcp_data, samples_for_welch, sample_rate, samp
 def get_freq_plot_center(overview_freqs, overview_pxx_rcp, mission):
     """ A function to find the frequency of the direct signal of the plot. """
 
-    # TODO: Developer will need to choose a suitable automated peak detection algorithm.
-    #  For now, just hardcode the values for each mission.
-
     ind = np.argmax(overview_pxx_rcp)
     freq_plot_center = overview_freqs[ind]
     if overview_pxx_rcp[ind] < 25:
@@ -265,11 +262,11 @@ def get_plot_window(freq_plot_center, df_calc, pxx_min, pxx_max):
     a minimum of 250-1.2*(100) = 130 Hz, to a maximum of 250+1.2*(100) = 370 Hz.
     """
 
-    # Display Name in GUI: “X-Axis min (Hz)”  # TODO: adjustable
+    # Display Name in GUI: “X-Axis min (Hz)”  # adjustable
     xlim_min = freq_plot_center - 1.5 * df_calc  # default value
     xlim_min = (freq_plot_center - 80)
 
-    # Display Name in GUI: “X-Axis max (Hz)”  # TODO: adjustable
+    # Display Name in GUI: “X-Axis max (Hz)”  # adjustable
     xlim_max = freq_plot_center + 1.5 * df_calc  # default value
     xlim_max = (freq_plot_center + 80)
 
@@ -279,12 +276,12 @@ def get_plot_window(freq_plot_center, df_calc, pxx_min, pxx_max):
     nearest 5 dB)
     """
 
-    # Display Name in GUI: “Y-Axis min (dB)”  # TODO: adjustable
+    # Display Name in GUI: “Y-Axis min (dB)”  # adjustable
     ylim_min = round_to_nearest_n(pxx_min, n=5)
-    ylim_min = -10  # FIXME: return to original value
-    # Display Name in GUI: “Y-Axis max (dB)”  # TODO: adjustable
+    ylim_min = -10
+    # Display Name in GUI: “Y-Axis max (dB)”  # adjustable
     ylim_max = round_to_nearest_n(ylim_min + 1.2 * (pxx_max - pxx_min), n=5)
-    ylim_max = 75  # FIXME: return to original value
+    ylim_max = 75
 
     return xlim_min, xlim_max, ylim_min, ylim_max
 
@@ -380,11 +377,9 @@ def get_signal_processing_parameters(filenames=None,
         band_freq = int(band_name.split()[0]) * mhz2hz
     else:
         band_freq = None
-        print("Data from this antenna is not yet supported")
 
     # set mission dependent variables
     if mission == 'Rosetta':
-        print('using Rosetta parameters')
         s.target = '67P'
         s.mission = mission
         theta_beamwidth = math.radians(1)  # radians
@@ -393,7 +388,7 @@ def get_signal_processing_parameters(filenames=None,
         s.altitude_sc = set_value(altitude_sc, default=10000)  # meters
         s.dt_occ = set_value(dt_occ, default=300)  # seconds
     elif mission == 'Dawn':
-        print('using Dawn parameters')
+
         s.target = 'Vesta'
         s.mission = mission
         theta_beamwidth = math.radians(1.6)  # radians
@@ -402,13 +397,11 @@ def get_signal_processing_parameters(filenames=None,
         s.altitude_sc = set_value(altitude_sc, default=200000)  # meters
         s.dt_occ = set_value(dt_occ, default=2000)  # seconds
     elif mission == 'userfile':
-        print('\nusing user-defined auto parameters')
         s.target = 'userfile'
         s.mission = mission
         theta_beamwidth = math.radians(1.6)  # radians
         s.radius_target = radius_target  # meters
 
-        # todo: calc from other userdefined params
         s.v_sc_orbital = set_value(v_sc_orbital, default=200)  # meters/second
 
         s.altitude_sc = altitude_sc  # meters
@@ -425,13 +418,13 @@ def get_signal_processing_parameters(filenames=None,
     theta_tilt = np.arccos((s.radius_target - (s.v_sc_orbital * s.dt_occ / (2 * math.pi)))
                            / (s.radius_target + s.altitude_sc))
 
-    # Display name in GUI: “Calc. freq. separation (Hz)”   # TODO: adjustable
+    # Display name in GUI: “Calc. freq. separation (Hz)”   # adjustable
     s.df_calc = (s.v_sc_orbital / wavelength) * np.sin(theta_sc_orbital_phase) * abs(
         np.sin(theta_tilt) - np.sin(theta_tilt + theta_beamwidth / 2))
 
     if mission == 'Rosetta':
         # set to fixed value for Rosetta to ensure accurate parameter recommendations
-        s.df_calc = 2  # FIXME: improve Rosetta pipeline
+        s.df_calc = 2  # TODO: set df_calc automatically
 
     # number of IQ samples recorded per second
     s.sample_rate = sample_rate
@@ -451,7 +444,7 @@ def get_signal_processing_parameters(filenames=None,
     # provide DEFAULT number of samples per raw FFT, using the suggested frequency resolution
     s.samples_per_raw_fft = int(np.floor(s.sample_rate / freq_res_suggested))
 
-    # Display name in GUI: “Freq. resolution (Hz)”  # TODO: adjustable
+    # Display name in GUI: “Freq. resolution (Hz)”  # adjustable
     # recalculate the spectral frequency resolution (freq_res) to get integer value
     s.freq_res = set_value(freq_res, default=(s.sample_rate / s.samples_per_raw_fft))
 
@@ -471,7 +464,7 @@ def get_signal_processing_parameters(filenames=None,
     # the minimum hop size, aka 1 sample, converted to a percent %
     s.min_hop_percent = 100 * (s.sample_rate / s.samples_per_raw_fft)
 
-    # Display name in GUI: “Sliding window step-size (%)”  # TODO: adjustable
+    # Display name in GUI: “Sliding window step-size (%)”  # adjustable
     # can be any value from min_hop_percent to 100, where 100% means no overlap.
     s.percent_window_per_hop = set_value(percent_window_per_hop, default=20)
 
@@ -495,7 +488,6 @@ def get_signal_processing_parameters(filenames=None,
     ###################################
 
     # Display name in GUI: “K (# spectra to average)”
-    # TODO: adjustable (integers ≥ 1)
     if mission == 'Rosetta':
         s.raw_fft_per_average = set_value(raw_fft_per_average, default=2)
     elif mission == 'Dawn':
@@ -549,7 +541,7 @@ def get_signal_processing_parameters(filenames=None,
     ##########################################
 
     # when to start and stop the animation
-    s.start_sec_user = set_value(start_sec_user, 0)  # TODO: adjustable
+    s.start_sec_user = set_value(start_sec_user, 0)  # adjustable
 
     s.stop_sec_user = s.start_sec_user + s.seconds_for_welch
 
