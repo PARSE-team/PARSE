@@ -1,29 +1,35 @@
-# PARSE
-## Processing & Analysis for Radio Science Experiments
-#### Elizabeth M. Palmer, Paul Sirri, Essam Heggy
-University of Southern California, Department of Electrical and Computer Engineering
-###### Developer Contact: paulsirri -at- gmail.com
+## PARSE: Processing & Analysis for Radio Science Experiments
+##### Elizabeth M. Palmer, Paul Sirri, Essam Heggy
+###### University of Southern California, Department of Electrical and Computer Engineering
+###### Developer Contact: paulsirri@gmail.com
 First Release: (under review with [*SoftwareX*](https://www.journals.elsevier.com/softwarex/) by Elsevier)
-![PARSE Logo](src/main/resources/base/PARSE_USC_logo_bw_red.png){: style="max width: 300px; height: auto;"}
+
+![PARSE Logo](https://github.com/PARSE-team/PARSE/blob/main/src/main/resources/base/PARSE_USC_logo_bw_red_4x5.png?raw=true)
 
 PARSE is a user-friendly GUI tool to assist planetary scientists in analyzing Deep Space Network (DSN) radio science datasets without requiring expertise in signal processing. PARSE can be used on bistatic radar (BSR) surface-scatter experiments, which use the radio communications antenna aboard a spacecraft to transmit X- or S-band radiowaves that scatter from the planetary object's surface and are then received by the DSN. BSR surface echoes can be used to quantify surface roughness at the cm-dm scale, for example, which can be used to constrain thermophysical models of planetary regoliths, support detailed geomorphological mapping, and reduce risk associated with site selection for landing and sampling missions. An example of such an experiment is given by [Palmer, Heggy & Kofman (2017)](https://doi.org/10.1038/s41467-017-00434-6).
 
-An quick run-through is shown in the following video:
-[![Tutorial Video](video_screenshot...xxx..jpg)](youtu.be URL)
+A video tutorial of PARSE is available through the link below:
+[*PARSE Tutorial Video*](https://youtu.be/JcRaaFpzjIg)
 
 ###### Workflow Summary:
-![PARSE flowchart](src/main/resources/base/softwareX_fig_flowchart_v5.png){: style="max width: 300px; height: auto;"}
+![PARSE flowchart](https://github.com/PARSE-team/PARSE/blob/main/src/main/resources/base/softwareX_fig_flowchart_v6_4x4.png?raw=true)
 
 After choosing the data file and supplying basic target body information and spacecraft orbital parameters, users are then shown recommended processing parameters and given the ability to conveniently adjust them. Once the parameters are entered, the user can run the plotting animation to iterate over the time series, displaying a sequence of power spectral density plots, which show the frequency distribution of the signal power received by the DSN. This animation can be paused at any time to better view a single power spectral density. Once the animation is paused, the user can select the signal analysis tab to extract key features from the plot or export it as an image file.
 
 ### Installation & Getting Started
 
-1. Find the installer package for your system:
-- For Microsoft Windows: [build / windows / PARSESetup.exe](https://github.com/PARSE-team/PARSE/tree/main/build/windows/PARSESetup.exe) > Click the "Download" button
-- For MacOS X: [build / mac / PARSESetup.dmg](https://github.com/PARSE-team/PARSE/tree/main/build/mac/PARSESetup.dmg) > Click the "Download" button
-2. For Windows: Click "More Info" and "Run Anyway" to download even though warning messages will pop up that the installer is unsigned. Note that the installer package is large (2-3 GB) since it includes large raw data files, and will take time to download depending on your connection speeds.
-3. Click the downloaded file to start installation. Click OK to install even though may be a warning message saying there is an unsigned publisher.
-4. The first time you run PARSE, expect 5 to 10 second delays while it reads in the example raw files for the first time.
+##### Users:
+1. In the column on the right-hand side of the repository homepage, click "Releases".
+2. Select a release, then click on "Source code (zip)" to download the project repository.
+   Note: The download is large (6-7 GB) since it includes raw data files, so it will take time to download depending on your connection speeds.
+3. After unzipping the file, look inside the "PARSE" directory to find the installer file for your system and run it. Due to the size of the bundled data files, please expect 1-2 minute delays when opening the application or its installer for the first time.
+  - For Mac OS X: navigate to "PARSE-1.0 / build / mac / PARSE.dmg"
+  - For Microsoft Windows: navigate to "PARSE-1.0 / build / windows / PARSESetup.exe"
+    - Note: If using Microsoft Windows, the installer may display a warning message. If so, click "More Info" and "Run Anyway" to begin the installation. 
+4. Once the installation is completed, PARSE will be available in your applications folder. Due to the size of the bundled data files, please expect 1-2 minute delays when opening the application or its installer for the first time
+
+##### Developers:
+To begin working with source code directly, install Git LFS on your device before cloning this repository.
 
 ### Error Reporting:
-If you run into issues with this process, please contact the developer at paulsirri -at- gmail.com
+If you run into issues with this process, please contact the developer at paulsirri@gmail.com
