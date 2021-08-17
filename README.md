@@ -1,11 +1,8 @@
-# IMPORTANT UPDATE (03/03/2021): 
-PARSE v1.0 is officially ready as of March 3, 2021. Any versions of the repository prior to this date are missing key documentation and have known software bugs. For more info, please check the commit logs or contact the developer at paulsirri@gmail.com
-
 ## PARSE: Processing & Analysis for Radio Science Experiments
 ##### Elizabeth M. Palmer, Paul Sirri, Essam Heggy
 ###### University of Southern California, Department of Electrical and Computer Engineering
 ###### Developer Contact: paulsirri@gmail.com
-First Release: (under review with [*SoftwareX*](https://www.journals.elsevier.com/softwarex/) by Elsevier)
+First Release: (under review with [*Planetary Science Journal*](https://journals.aas.org/planetary-science-journal/) by American Astronomical Society)
 
 ![PARSE Logo](https://github.com/PARSE-team/PARSE/blob/main/src/main/resources/base/PARSE_USC_logo_bw_red_4x5.png?raw=true)
 
